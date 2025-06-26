@@ -253,7 +253,7 @@ impl Default for SealedProductSubtype {
 }
 
 /// MTGJSON Singular Sealed Product Object
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug)]
 #[pyclass(name = "MtgjsonSealedProduct")]
 pub struct MtgjsonSealedProduct {
     #[pyo3(get, set)]
@@ -324,7 +324,58 @@ impl MtgjsonSealedProduct {
     }
 
     pub fn to_json(&self) -> PyResult<String> {
-        serde_json::to_string(self).map_err(|e| {
+        // Manual serialization since we can't use serde with PyObject fields
+        let mut result = serde_json::Map::new();
+        
+        if !self.name.is_empty() {
+            result.insert("name".to_string(), serde_json::Value::String(self.name.clone()));
+        }
+        if !self.uuid.is_empty() {
+            result.insert("uuid".to_string(), serde_json::Value::String(self.uuid.clone()));
+        }
+        
+        // Serialize other fields that support serde
+        if let Ok(identifiers_json) = serde_json::to_value(&self.identifiers) {
+            result.insert("identifiers".to_string(), identifiers_json);
+        }
+        
+        if let Ok(urls_json) = serde_json::to_value(&self.purchase_urls) {
+            result.insert("purchaseUrls".to_string(), urls_json);
+        }
+        
+        if let Some(ref val) = self.release_date {
+            if !val.is_empty() {
+                result.insert("releaseDate".to_string(), serde_json::Value::String(val.clone()));
+            }
+        }
+        
+        if let Some(ref val) = self.language {
+            if !val.is_empty() {
+                result.insert("language".to_string(), serde_json::Value::String(val.clone()));
+            }
+        }
+        
+        if let Some(ref val) = self.category {
+            if let Some(category_str) = val.to_json() {
+                result.insert("category".to_string(), serde_json::Value::String(category_str));
+            }
+        }
+        
+        if let Some(ref val) = self.subtype {
+            if let Some(subtype_str) = val.to_json() {
+                result.insert("subtype".to_string(), serde_json::Value::String(subtype_str));
+            }
+        }
+        
+        if let Some(val) = self.product_size {
+            result.insert("productSize".to_string(), serde_json::Value::Number(val.into()));
+        }
+        
+        if let Some(val) = self.card_count {
+            result.insert("cardCount".to_string(), serde_json::Value::Number(val.into()));
+        }
+        
+        serde_json::to_string(&result).map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Serialization error: {}", e))
         })
     }
@@ -378,9 +429,9 @@ impl MtgjsonSealedProduct {
             // Convert PyObject contents to JSON
             let contents_json: HashMap<String, serde_json::Value> = val.iter()
                 .map(|(k, v)| {
-                    let json_val = match v.as_ref(py).str() {
+                    let json_val = match v.bind(py).str() {
                         Ok(string_val) => serde_json::Value::String(string_val.to_string()),
-                        Err(_) => serde_json::Value::String(v.as_ref(py).to_string()),
+                        Err(_) => serde_json::Value::String(v.bind(py).to_string()),
                     };
                     (k.clone(), json_val)
                 })

@@ -19,6 +19,10 @@ pub struct MtgjsonForeignData {
     #[pyo3(get, set)]
     pub language: String,
     
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[pyo3(get, set)]
+    pub multiverse_id: Option<i32>,
+    
     #[pyo3(get, set)]
     pub identifiers: MtgjsonIdentifiers,
     

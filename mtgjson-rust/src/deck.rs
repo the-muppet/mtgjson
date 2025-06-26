@@ -14,7 +14,7 @@ use std::collections::{HashMap, HashSet};
 //! its name, main board, side board, and other relevant information.
 //!
 //! Note: All fields are optional, so we must manually check for empty values.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 #[pyclass(name = "MtgjsonDeck")]
 pub struct MtgjsonDeck {
     #[pyo3(get, set)]
@@ -94,7 +94,7 @@ impl MtgjsonDeck {
                         serde_json::to_value(card).unwrap_or(serde_json::Value::Null)
                     } else {
                         // Convert PyObject to serde_json::Value
-                        obj.as_ref(py).to_string().into()
+                        obj.bind(py).to_string().into()
                     }
                 })
                 .collect();
@@ -107,7 +107,7 @@ impl MtgjsonDeck {
                     if let Ok(card) = obj.extract::<MtgjsonCard>(py) {
                         serde_json::to_value(card).unwrap_or(serde_json::Value::Null)
                     } else {
-                        obj.as_ref(py).to_string().into()
+                        obj.bind(py).to_string().into()
                     }
                 })
                 .collect();

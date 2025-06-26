@@ -49,28 +49,28 @@ pub use translations::*;
 
 /// Python module for MTGJSON Rust implementation
 #[pymodule]
-fn mtgjson_rust(py: Python, m: &PyModule) -> PyResult<()> {
+fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register classes using PyO3 0.22 API
-    m.add("MtgjsonCard", py.get_type::<MtgjsonCard>())?;
-    m.add("MtgjsonDeck", py.get_type::<MtgjsonDeck>())?;
-    m.add("MtgjsonDeckHeader", py.get_type::<MtgjsonDeckHeader>())?;
-    m.add("MtgjsonForeignData", py.get_type::<MtgjsonForeignData>())?;
-    m.add("MtgjsonGameFormats", py.get_type::<MtgjsonGameFormats>())?;
-    m.add("MtgjsonIdentifiers", py.get_type::<MtgjsonIdentifiers>())?;
-    m.add("MtgjsonLeadershipSkills", py.get_type::<MtgjsonLeadershipSkills>())?;
-    m.add("MtgjsonLegalities", py.get_type::<MtgjsonLegalities>())?;
-    m.add("MtgjsonMeta", py.get_type::<MtgjsonMeta>())?;
-    m.add("MtgjsonPrices", py.get_type::<MtgjsonPrices>())?;
-    m.add("MtgjsonPurchaseUrls", py.get_type::<MtgjsonPurchaseUrls>())?;
-    m.add("MtgjsonRelatedCards", py.get_type::<MtgjsonRelatedCards>())?;
-    m.add("MtgjsonRuling", py.get_type::<MtgjsonRuling>())?;
-    m.add("MtgjsonSealedProduct", py.get_type::<MtgjsonSealedProduct>())?;
-    m.add("MtgjsonSet", py.get_type::<MtgjsonSet>())?;
-    m.add("MtgjsonTranslations", py.get_type::<MtgjsonTranslations>())?;
+    m.add_class::<MtgjsonCard>()?;
+    m.add_class::<MtgjsonDeck>()?;
+    m.add_class::<MtgjsonDeckHeader>()?;
+    m.add_class::<MtgjsonForeignData>()?;
+    m.add_class::<MtgjsonGameFormats>()?;
+    m.add_class::<MtgjsonIdentifiers>()?;
+    m.add_class::<MtgjsonLeadershipSkills>()?;
+    m.add_class::<MtgjsonLegalities>()?;
+    m.add_class::<MtgjsonMeta>()?;
+    m.add_class::<MtgjsonPrices>()?;
+    m.add_class::<MtgjsonPurchaseUrls>()?;
+    m.add_class::<MtgjsonRelatedCards>()?;
+    m.add_class::<MtgjsonRuling>()?;
+    m.add_class::<MtgjsonSealedProduct>()?;
+    m.add_class::<MtgjsonSet>()?;
+    m.add_class::<MtgjsonTranslations>()?;
     
     // Register enums
-    m.add("SealedProductCategory", py.get_type::<SealedProductCategory>())?;
-    m.add("SealedProductSubtype", py.get_type::<SealedProductSubtype>())?;
+    m.add_class::<SealedProductCategory>()?;
+    m.add_class::<SealedProductSubtype>()?;
     
     Ok(())
 }
