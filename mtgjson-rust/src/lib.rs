@@ -17,6 +17,7 @@ pub mod sealed_product;
 pub mod set;
 pub mod translations;
 pub mod utils;
+pub mod set_builder;
 
 // Re-export all major types
 pub use base::*;
