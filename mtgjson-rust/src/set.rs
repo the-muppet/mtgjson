@@ -33,7 +33,7 @@ pub struct MtgjsonSet {
     
     #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
-    pub booster: Option<HashMap<String, serde_json::Value>>,
+    pub booster: Option<HashMap<String, PyObject>>,
     
     #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
@@ -131,7 +131,7 @@ pub struct MtgjsonSet {
     // Internal fields not published in JSON
     #[serde(skip)]
     #[pyo3(get, set)]
-    pub extra_tokens: Vec<HashMap<String, serde_json::Value>>,
+    pub extra_tokens: Vec<HashMap<String, PyObject>>,
     
     #[serde(skip)]
     #[pyo3(get, set)]

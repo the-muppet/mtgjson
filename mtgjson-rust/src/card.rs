@@ -385,7 +385,7 @@ pub struct MtgjsonCard {
     illustration_ids: Vec<String>,
     
     #[serde(skip)]
-    watermark_resource: HashMap<String, Vec<serde_json::Value>>,
+    watermark_resource: HashMap<String, Vec<PyObject>>,
 }
 
 // PyO3 methods

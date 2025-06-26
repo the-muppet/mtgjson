@@ -290,7 +290,7 @@ pub struct MtgjsonSealedProduct {
     
     #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
-    pub contents: Option<HashMap<String, serde_json::Value>>,
+    pub contents: Option<HashMap<String, PyObject>>,
     
     /// Number of packs in a booster box [DEPRECATED]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -330,7 +330,7 @@ impl MtgjsonSealedProduct {
     }
 
     /// Convert to dictionary for Python
-    pub fn to_dict(&self) -> PyResult<HashMap<String, serde_json::Value>> {
+    pub fn to_dict(&self, py: Python) -> PyResult<HashMap<String, serde_json::Value>> {
         let mut result = HashMap::new();
         
         if !self.name.is_empty() {
@@ -375,7 +375,17 @@ impl MtgjsonSealedProduct {
         }
         
         if let Some(ref val) = self.contents {
-            result.insert("contents".to_string(), serde_json::to_value(val).unwrap());
+            // Convert PyObject contents to JSON
+            let contents_json: HashMap<String, serde_json::Value> = val.iter()
+                .map(|(k, v)| {
+                    let json_val = match v.as_ref(py).str() {
+                        Ok(string_val) => serde_json::Value::String(string_val.to_string()),
+                        Err(_) => serde_json::Value::String(v.as_ref(py).to_string()),
+                    };
+                    (k.clone(), json_val)
+                })
+                .collect();
+            result.insert("contents".to_string(), serde_json::to_value(contents_json).unwrap());
         }
         
         if let Some(val) = self.product_size {
