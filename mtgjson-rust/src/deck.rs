@@ -12,27 +12,27 @@ use std::collections::{HashMap, HashSet};
 pub struct MtgjsonDeck {
     #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
-    pub main_board: Vec<serde_json::Value>, // Could be MtgjsonCard or dict
+    pub main_board: Vec<crate::PyJsonValue>, // Could be MtgjsonCard or dict
     
     #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
-    pub side_board: Vec<serde_json::Value>, // Could be MtgjsonCard or dict
+    pub side_board: Vec<crate::PyJsonValue>, // Could be MtgjsonCard or dict
     
     #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
-    pub display_commander: Vec<serde_json::Value>, // Could be MtgjsonCard or dict
+    pub display_commander: Vec<crate::PyJsonValue>, // Could be MtgjsonCard or dict
     
     #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
-    pub commander: Vec<serde_json::Value>, // Could be MtgjsonCard or dict
+    pub commander: Vec<crate::PyJsonValue>, // Could be MtgjsonCard or dict
     
     #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
-    pub planes: Vec<serde_json::Value>, // Could be MtgjsonCard or dict
+    pub planes: Vec<crate::PyJsonValue>, // Could be MtgjsonCard or dict
     
     #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
-    pub schemes: Vec<serde_json::Value>, // Could be MtgjsonCard or dict
+    pub schemes: Vec<crate::PyJsonValue>, // Could be MtgjsonCard or dict
 
     #[pyo3(get, set)]
     pub code: String,
@@ -110,28 +110,31 @@ impl MtgjsonDeck {
 
     /// Add a card to the main board
     pub fn add_main_board_card(&mut self, card: &MtgjsonCard) -> PyResult<()> {
-        let card_value = serde_json::to_value(card).map_err(|e| {
+        let json_value = serde_json::to_value(card).map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Card serialization error: {}", e))
         })?;
-        self.main_board.push(card_value);
+        let py_json_value = crate::PyJsonValue::from(json_value);
+        self.main_board.push(py_json_value);
         Ok(())
     }
 
     /// Add a card to the side board
     pub fn add_side_board_card(&mut self, card: &MtgjsonCard) -> PyResult<()> {
-        let card_value = serde_json::to_value(card).map_err(|e| {
+        let json_value = serde_json::to_value(card).map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Card serialization error: {}", e))
         })?;
-        self.side_board.push(card_value);
+        let py_json_value = crate::PyJsonValue::from(json_value);
+        self.side_board.push(py_json_value);
         Ok(())
     }
 
     /// Add a commander card
     pub fn add_commander_card(&mut self, card: &MtgjsonCard) -> PyResult<()> {
-        let card_value = serde_json::to_value(card).map_err(|e| {
+        let json_value = serde_json::to_value(card).map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Card serialization error: {}", e))
         })?;
-        self.commander.push(card_value);
+        let py_json_value = crate::PyJsonValue::from(json_value);
+        self.commander.push(py_json_value);
         Ok(())
     }
 

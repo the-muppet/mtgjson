@@ -444,11 +444,11 @@ pub fn add_variations_and_alternative_fields(mtgjson_set: &mut MtgjsonSet) {
         }
         
         if !variations.is_empty() {
-            mtgjson_set.cards[i].variations = Some(variations);
+            mtgjson_set.cards[i].variations = variations;
         }
         
         // Add alternative tag - ignore singleton printings and basics
-        let has_variations = mtgjson_set.cards[i].variations.is_some();
+        let has_variations = !mtgjson_set.cards[i].variations.is_empty();
         if !has_variations || constants.basic_land_names.contains(&mtgjson_set.cards[i].name) {
             continue;
         }
@@ -457,7 +457,7 @@ pub fn add_variations_and_alternative_fields(mtgjson_set: &mut MtgjsonSet) {
         let distinct_card_printing = format!(
             "{}|{}|{}|{}|{}",
             mtgjson_set.cards[i].name,
-            mtgjson_set.cards[i].border_color.as_deref().unwrap_or(""),
+            mtgjson_set.cards[i].border_color,
             mtgjson_set.cards[i].frame_version,
             mtgjson_set.cards[i].frame_effects.join(","),
             mtgjson_set.cards[i].side.as_deref().unwrap_or("")
@@ -490,12 +490,12 @@ pub fn add_other_face_ids(cards_to_act_on: &mut [MtgjsonCard]) {
     let card_count = cards_to_act_on.len();
     
     for i in 0..card_count {
-        if cards_to_act_on[i].names.is_empty() {
+        let current_names = cards_to_act_on[i].get_names();
+        if current_names.is_empty() {
             continue;
         }
         
         let mut other_face_ids = Vec::new();
-        let current_names = cards_to_act_on[i].names.clone();
         let current_uuid = cards_to_act_on[i].uuid.clone();
         let current_layout = cards_to_act_on[i].layout.clone();
         let current_side = cards_to_act_on[i].side.clone();
@@ -536,7 +536,7 @@ pub fn add_other_face_ids(cards_to_act_on: &mut [MtgjsonCard]) {
         }
         
         if !other_face_ids.is_empty() {
-            cards_to_act_on[i].other_face_ids = Some(other_face_ids);
+            cards_to_act_on[i].other_face_ids = other_face_ids;
         }
     }
     
@@ -621,16 +621,11 @@ pub fn add_rebalanced_to_original_linkage(mtgjson_set: &mut MtgjsonSet) {
                 original_card_uuids.push(mtgjson_set.cards[j].uuid.clone());
                 
                 // Add rebalanced printing to original card
-                if mtgjson_set.cards[j].rebalanced_printings.is_none() {
-                    mtgjson_set.cards[j].rebalanced_printings = Some(Vec::new());
-                }
-                if let Some(ref mut rebalanced_printings) = mtgjson_set.cards[j].rebalanced_printings {
-                    rebalanced_printings.push(mtgjson_set.cards[i].uuid.clone());
-                }
+                mtgjson_set.cards[j].rebalanced_printings.push(mtgjson_set.cards[i].uuid.clone());
             }
         }
         
-        mtgjson_set.cards[i].original_printings = Some(original_card_uuids);
+        mtgjson_set.cards[i].original_printings = original_card_uuids;
     }
     
     println!("Finished linking rebalanced cards for {}", mtgjson_set.code);
@@ -669,7 +664,7 @@ pub fn get_base_and_total_set_sizes(mtgjson_set: &MtgjsonSet) -> (i32, i32) {
     
     // Use knowledge of Boosterfun being the first non-numbered card
     // BoosterFun started with Throne of Eldraine in Oct 2019
-    if mtgjson_set.release_date.as_deref().unwrap_or("") > "2019-10-01" {
+    if mtgjson_set.release_date.as_ref().unwrap_or(&String::new()) > "2019-10-01" {
         for card in &mtgjson_set.cards {
             if card.promo_types.contains(&"boosterfun".to_string()) {
                 // Extract number from card number
@@ -718,7 +713,7 @@ pub fn build_mtgjson_card(
     sf_set: &HashMap<String, serde_json::Value>,
     set_release_date: &str,
 ) -> Option<MtgjsonCard> {
-    let mut mtgjson_card = MtgjsonCard::new();
+    let mut mtgjson_card = MtgjsonCard::new(false);
     
     // Extract basic card information
     mtgjson_card.name = sf_card.get("name")
@@ -738,15 +733,15 @@ pub fn build_mtgjson_card(
     
     // Parse types
     let (super_types, types, sub_types) = parse_card_types(&mtgjson_card.type_);
-    mtgjson_card.super_types = super_types;
+    mtgjson_card.supertypes = super_types;
     mtgjson_card.types = types;
-    mtgjson_card.sub_types = sub_types;
+    mtgjson_card.subtypes = sub_types;
     
     // Extract mana cost and colors
     if let Some(mana_cost) = sf_card.get("mana_cost").and_then(|v| v.as_str()) {
-        mtgjson_card.mana_cost = Some(mana_cost.to_string());
+        mtgjson_card.mana_cost = mana_cost.to_string();
         mtgjson_card.colors = get_card_colors(mana_cost);
-        mtgjson_card.converted_mana_cost = Some(get_card_cmc(mana_cost));
+        mtgjson_card.converted_mana_cost = get_card_cmc(mana_cost);
     }
     
     // Extract Oracle text
@@ -769,10 +764,10 @@ pub fn build_mtgjson_card(
     
     // Extract power and toughness for creatures
     if let Some(power) = sf_card.get("power").and_then(|v| v.as_str()) {
-        mtgjson_card.power = Some(power.to_string());
+        mtgjson_card.power = power.to_string();
     }
     if let Some(toughness) = sf_card.get("toughness").and_then(|v| v.as_str()) {
-        mtgjson_card.toughness = Some(toughness.to_string());
+        mtgjson_card.toughness = toughness.to_string();
     }
     
     // Extract loyalty for planeswalkers
@@ -791,7 +786,8 @@ pub fn build_mtgjson_card(
     // Extract border color
     mtgjson_card.border_color = sf_card.get("border_color")
         .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+        .unwrap_or("black")
+        .to_string();
     
     // Extract frame version
     mtgjson_card.frame_version = sf_card.get("frame")
@@ -823,12 +819,12 @@ pub fn build_mtgjson_card(
         let legalities_map: HashMap<String, String> = legalities.iter()
             .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
             .collect();
-        mtgjson_card.legalities = Some(parse_legalities(&legalities_map));
+        mtgjson_card.legalities = parse_legalities(&legalities_map);
     }
     
     // Extract ruling information
     if let Some(rulings_uri) = sf_card.get("rulings_uri").and_then(|v| v.as_str()) {
-        mtgjson_card.rulings = parse_rulings(rulings_uri);
+        mtgjson_card.rulings = Some(parse_rulings(rulings_uri));
     }
     
     // Extract printings
@@ -897,8 +893,8 @@ pub fn complete_set_building(
     
     // Calculate set sizes
     let (base_set_size, total_set_size) = get_base_and_total_set_sizes(mtgjson_set);
-    mtgjson_set.base_set_size = Some(base_set_size);
-    mtgjson_set.total_set_size = Some(total_set_size);
+    mtgjson_set.base_set_size = base_set_size;
+    mtgjson_set.total_set_size = total_set_size;
     
     // TODO: Add tokens building
     // TODO: Add sealed products
@@ -946,13 +942,13 @@ pub fn enhance_cards_with_metadata(mtgjson_cards: &mut [MtgjsonCard]) {
     for card in mtgjson_cards.iter_mut() {
         // Add color identity for commanders
         if card.type_.contains("Legendary") && card.type_.contains("Creature") {
-            card.color_identity = Some(card.colors.clone());
+            card.color_identity = card.colors.clone();
         }
         
         // Mark basic lands
         let constants = Constants::new();
         if constants.basic_land_names.contains(&card.name) {
-            card.super_types.push("Basic".to_string());
+            card.supertypes.push("Basic".to_string());
         }
         
         // Calculate EDH rec rank (placeholder)

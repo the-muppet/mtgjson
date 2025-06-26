@@ -1,5 +1,46 @@
 use pyo3::prelude::*;
+use pyo3::wrap_pyfunction;
+use std::collections::HashMap;
 
+// PyO3-compatible wrapper for JSON values
+#[pyclass(name = "JsonValue")]
+#[derive(Debug, Clone)]
+pub struct PyJsonValue {
+    #[pyo3(get, set)]
+    pub value: String,
+}
+
+#[pymethods]
+impl PyJsonValue {
+    #[new]
+    pub fn new(value: String) -> Self {
+        Self { value }
+    }
+    
+    pub fn __str__(&self) -> String {
+        self.value.clone()
+    }
+    
+    pub fn __repr__(&self) -> String {
+        format!("JsonValue(\"{}\")", self.value)
+    }
+}
+
+impl From<serde_json::Value> for PyJsonValue {
+    fn from(value: serde_json::Value) -> Self {
+        Self {
+            value: value.to_string(),
+        }
+    }
+}
+
+impl From<PyJsonValue> for serde_json::Value {
+    fn from(py_value: PyJsonValue) -> Self {
+        serde_json::from_str(&py_value.value).unwrap_or(serde_json::Value::Null)
+    }
+}
+
+// Re-export all modules
 pub mod base;
 pub mod card;
 pub mod deck;
@@ -19,28 +60,30 @@ pub mod translations;
 pub mod utils;
 pub mod set_builder;
 
-// Re-export all major types
-pub use base::*;
-pub use card::*;
-pub use deck::*;
-pub use foreign_data::*;
-pub use game_formats::*;
-pub use identifiers::*;
-pub use leadership_skills::*;
-pub use legalities::*;
-pub use meta::*;
-pub use prices::*;
-pub use purchase_urls::*;
-pub use related_cards::*;
-pub use rulings::*;
-pub use sealed_product::*;
-pub use set::*;
-pub use translations::*;
+// Import all the structs
+use card::MtgjsonCard;
+use deck::{MtgjsonDeck, MtgjsonDeckHeader};
+use foreign_data::MtgjsonForeignData;
+use game_formats::MtgjsonGameFormats;
+use identifiers::MtgjsonIdentifiers;
+use leadership_skills::MtgjsonLeadershipSkills;
+use legalities::MtgjsonLegalities;
+use meta::MtgjsonMeta;
+use prices::MtgjsonPrices;
+use purchase_urls::MtgjsonPurchaseUrls;
+use related_cards::MtgjsonRelatedCards;
+use rulings::MtgjsonRuling;
+use sealed_product::{MtgjsonSealedProduct, SealedProductCategory, SealedProductSubtype};
+use set::MtgjsonSet;
+use translations::MtgjsonTranslations;
 
-/// Python module for MTGJSON Rust implementation
+/// Python module definition
 #[pymodule]
-fn mtgjson_rust(_py: Python, m: &PyModule) -> PyResult<()> {
-    // Register classes
+fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    // Add the JSON value wrapper
+    m.add_class::<PyJsonValue>()?;
+    
+    // Add all MTGJSON classes
     m.add_class::<MtgjsonCard>()?;
     m.add_class::<MtgjsonDeck>()?;
     m.add_class::<MtgjsonDeckHeader>()?;
@@ -58,7 +101,7 @@ fn mtgjson_rust(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<MtgjsonSet>()?;
     m.add_class::<MtgjsonTranslations>()?;
     
-    // Register enums
+    // Add enums
     m.add_class::<SealedProductCategory>()?;
     m.add_class::<SealedProductSubtype>()?;
     
