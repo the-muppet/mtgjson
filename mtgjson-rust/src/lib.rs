@@ -59,6 +59,7 @@ pub mod set;
 pub mod translations;
 pub mod utils;
 pub mod set_builder;
+pub mod compiled_classes;
 
 // Import all the structs
 use card::MtgjsonCard;
@@ -76,6 +77,14 @@ use rulings::MtgjsonRuling;
 use sealed_product::{MtgjsonSealedProduct, SealedProductCategory, SealedProductSubtype};
 use set::MtgjsonSet;
 use translations::MtgjsonTranslations;
+
+// Import compiled classes
+use compiled_classes::{
+    MtgjsonStructures, MtgjsonCompiledList, MtgjsonDeckList, 
+    MtgjsonKeywords, MtgjsonAllIdentifiers, MtgjsonAllPrintings,
+    MtgjsonAtomicCards, MtgjsonCardTypes, MtgjsonEnumValues,
+    MtgjsonSetList, MtgjsonTcgplayerSkus
+};
 
 /// Python module definition
 #[pymodule]
@@ -104,6 +113,19 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Add enums
     m.add_class::<SealedProductCategory>()?;
     m.add_class::<SealedProductSubtype>()?;
+    
+    // Add compiled classes
+    m.add_class::<MtgjsonStructures>()?;
+    m.add_class::<MtgjsonCompiledList>()?;
+    m.add_class::<MtgjsonDeckList>()?;
+    m.add_class::<MtgjsonKeywords>()?;
+    m.add_class::<MtgjsonAllIdentifiers>()?;
+    m.add_class::<MtgjsonAllPrintings>()?;
+    m.add_class::<MtgjsonAtomicCards>()?;
+    m.add_class::<MtgjsonCardTypes>()?;
+    m.add_class::<MtgjsonEnumValues>()?;
+    m.add_class::<MtgjsonSetList>()?;
+    m.add_class::<MtgjsonTcgplayerSkus>()?;
     
     Ok(())
 }
