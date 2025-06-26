@@ -1,4 +1,4 @@
-THIS SHOULD BE A LINTER ERRORuse crate::base::{skip_if_empty_optional_string, JsonObject};
+use crate::base::{skip_if_empty_optional_string, JsonObject};
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -158,7 +158,81 @@ impl MtgjsonIdentifiers {
                 result.insert("cardsphereId".to_string(), val.clone());
             }
         }
-        // ... continue for all fields
+        if let Some(ref val) = self.mcm_id {
+            if !val.is_empty() {
+                result.insert("mcmId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.mcm_meta_id {
+            if !val.is_empty() {
+                result.insert("mcmMetaId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.mtg_arena_id {
+            if !val.is_empty() {
+                result.insert("mtgArenaId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.mtgjson_foil_version_id {
+            if !val.is_empty() {
+                result.insert("mtgjsonFoilVersionId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.mtgjson_non_foil_version_id {
+            if !val.is_empty() {
+                result.insert("mtgjsonNonFoilVersionId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.mtgjson_v4_id {
+            if !val.is_empty() {
+                result.insert("mtgjsonV4Id".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.mtgo_foil_id {
+            if !val.is_empty() {
+                result.insert("mtgoFoilId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.mtgo_id {
+            if !val.is_empty() {
+                result.insert("mtgoId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.multiverse_id {
+            if !val.is_empty() {
+                result.insert("multiverseId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.scryfall_id {
+            if !val.is_empty() {
+                result.insert("scryfallId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.scryfall_illustration_id {
+            if !val.is_empty() {
+                result.insert("scryfallIllustrationId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.scryfall_card_back_id {
+            if !val.is_empty() {
+                result.insert("scryfallCardBackId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.scryfall_oracle_id {
+            if !val.is_empty() {
+                result.insert("scryfallOracleId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.tcgplayer_etched_product_id {
+            if !val.is_empty() {
+                result.insert("tcgplayerEtchedProductId".to_string(), val.clone());
+            }
+        }
+        if let Some(ref val) = self.tcgplayer_product_id {
+            if !val.is_empty() {
+                result.insert("tcgplayerProductId".to_string(), val.clone());
+            }
+        }
         
         Ok(result)
     }
