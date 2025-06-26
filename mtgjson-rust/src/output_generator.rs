@@ -248,7 +248,7 @@ impl OutputGenerator {
             })?;
             
             if entry.path().extension().and_then(|s| s.to_str()) == Some("json") {
-                let hash = self.calculate_file_hash(&entry.path())?;
+                let hash = self.calculate_file_hash(entry.path().display().to_string())?;
                 let hash_filename = format!("{}.sha256", entry.path().display());
                 fs::write(&hash_filename, hash).map_err(|e| {
                     PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to write hash: {}", e))
@@ -260,9 +260,10 @@ impl OutputGenerator {
     }
     
     /// Calculate SHA256 hash of a file
-    pub fn calculate_file_hash(&self, path: &Path) -> PyResult<String> {
+    pub fn calculate_file_hash(&self, path: String) -> PyResult<String> {
         // TODO: Simplified hash calculation - would use a proper crypto library
-        let contents = fs::read(path).map_err(|e| {
+        let path_obj = Path::new(&path);
+        let contents = fs::read(path_obj).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to read file: {}", e))
         })?;
         

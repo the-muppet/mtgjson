@@ -657,8 +657,8 @@ pub fn get_base_and_total_set_sizes(
 
 /// Add starter card designation to cards not available in boosters
 pub fn add_is_starter_option(mtgjson_set: &mut MtgjsonSet) {
-    let release_date = mtgjson_set.release_date.as_ref().map(|s| s.as_str()).unwrap_or("");
-    if release_date > "2019-10-01" {
+    let release_date = &mtgjson_set.release_date;
+    if release_date.as_str() > "2019-10-01" {
         // Implementation here
     }
 }
