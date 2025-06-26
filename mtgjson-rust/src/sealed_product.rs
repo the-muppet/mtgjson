@@ -268,37 +268,29 @@ pub struct MtgjsonSealedProduct {
     #[pyo3(get, set)]
     pub purchase_urls: MtgjsonPurchaseUrls,
     
-    #[serde(skip)]
     #[pyo3(get, set)]
     pub raw_purchase_urls: HashMap<String, String>,
     
-    #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
     pub release_date: Option<String>,
     
-    #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
     pub language: Option<String>,
     
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
     pub category: Option<SealedProductCategory>,
     
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
     pub subtype: Option<SealedProductSubtype>,
     
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
     pub contents: Option<HashMap<String, PyObject>>,
     
     /// Number of packs in a booster box [DEPRECATED]
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
     pub product_size: Option<i32>,
     
     /// Number of cards in a booster pack or deck
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
     pub card_count: Option<i32>,
 }
@@ -381,7 +373,7 @@ impl MtgjsonSealedProduct {
     }
 
     /// Convert to dictionary for Python
-    pub fn to_dict(&self, py: Python) -> PyResult<HashMap<String, serde_json::Value>> {
+    pub fn to_dict(&self, py: Python) -> PyResult<PyObject> {
         let mut result = HashMap::new();
         
         if !self.name.is_empty() {
@@ -447,7 +439,7 @@ impl MtgjsonSealedProduct {
             result.insert("cardCount".to_string(), serde_json::Value::Number(val.into()));
         }
         
-        Ok(result)
+        Ok(result.into_py(py))
     }
 
     /// Check if sealed product has meaningful content

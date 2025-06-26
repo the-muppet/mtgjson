@@ -9,48 +9,42 @@ use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
-//! MtgjsonSet
-//!
-//! This struct represents a single Magic: The Gathering set.
-//! It is used to store all the data for a single set, including
-//! its base set size, block, booster, cards, cardsphere set id, code,
-//! code v3, decks, is foreign only, is foil only, is non foil only,
-//! is online only, is partial preview, keyrune code, languages, mcm id,
-//! mcm id extras, mcm name, mtgo code, name, parent code, release date,
-//! tcgplayer group id, sealed product, tokens, token set code, total set size,
-//! translations, type, extra tokens, and search uri.
-//!
-//! Note: All fields are required, so we must manually check for empty values.
+/// MtgjsonSet
+///
+/// This struct represents a single Magic: The Gathering set.
+/// It is used to store all the data for a single set, including
+/// its base set size, block, booster, cards, cardsphere set id, code,
+/// code v3, decks, is foreign only, is foil only, is non foil only,
+/// is online only, is partial preview, keyrune code, languages, mcm id,
+/// mcm id extras, mcm name, mtgo code, name, parent code, release date,
+/// tcgplayer group id, sealed product, tokens, token set code, total set size,
+/// translations, type, extra tokens, and search uri.
+///
+/// Note: All fields are required, so we must manually check for empty values.
 #[derive(Debug)]
 #[pyclass(name = "MtgjsonSet")]
 pub struct MtgjsonSet {
     #[pyo3(get, set)]
     pub base_set_size: i32,
     
-    #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
     pub block: Option<String>,
     
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
     pub booster: Option<HashMap<String, PyObject>>,
     
-    #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
     pub cards: Vec<MtgjsonCard>,
     
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
     pub cardsphere_set_id: Option<i32>,
     
     #[pyo3(get, set)]
     pub code: String,
     
-    #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
     pub code_v3: Option<String>,
     
-    #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
     pub decks: Vec<MtgjsonDeck>,
     
@@ -69,53 +63,42 @@ pub struct MtgjsonSet {
     #[pyo3(get, set)]
     pub is_partial_preview: bool,
     
-    #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
     pub keyrune_code: Option<String>,
     
-    #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
     pub languages: Vec<String>,
     
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
     pub mcm_id: Option<i32>,
     
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
     pub mcm_id_extras: Option<i32>,
     
-    #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
     pub mcm_name: Option<String>,
     
-    #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
     pub mtgo_code: Option<String>,
     
     #[pyo3(get, set)]
     pub name: String,
     
-    #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
     pub parent_code: Option<String>,
     
     #[pyo3(get, set)]
     pub release_date: String,
     
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
     pub tcgplayer_group_id: Option<i32>,
     
-    #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
     pub sealed_product: Vec<MtgjsonSealedProduct>,
     
-    #[serde(skip_serializing_if = "skip_if_empty_vec")]
     #[pyo3(get, set)]
     pub tokens: Vec<MtgjsonCard>,
     
-    #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
     pub token_set_code: Option<String>,
     
@@ -129,11 +112,9 @@ pub struct MtgjsonSet {
     pub type_: String,
 
     // Internal fields not published in JSON
-    #[serde(skip)]
     #[pyo3(get, set)]
     pub extra_tokens: Vec<HashMap<String, PyObject>>,
     
-    #[serde(skip)]
     #[pyo3(get, set)]
     pub search_uri: String,
 }

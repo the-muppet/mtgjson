@@ -50,6 +50,26 @@ impl MtgjsonUtils {
             })
             .collect()
     }
+
+    /// Clean card number for comparison, returning (cleaned_number, original_length)
+    pub fn clean_card_number(number: &str) -> (i32, usize) {
+        let original_len = number.len();
+        
+        // Extract numeric part from the beginning of the string
+        let mut numeric_part = String::new();
+        for c in number.chars() {
+            if c.is_ascii_digit() {
+                numeric_part.push(c);
+            } else {
+                break;
+            }
+        }
+        
+        // Parse the numeric part, defaulting to 0 if empty or invalid
+        let cleaned_number = numeric_part.parse().unwrap_or(0);
+        
+        (cleaned_number, original_len)
+    }
 }
 
 #[cfg(test)]

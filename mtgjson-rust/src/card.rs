@@ -361,7 +361,7 @@ pub struct MtgjsonCard {
     pub variations: Vec<String>,
     
     #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub watermark: Option<String>,
 
     // Outside entities, not published
@@ -383,9 +383,6 @@ pub struct MtgjsonCard {
     
     #[serde(skip)]
     illustration_ids: Vec<String>,
-    
-    #[serde(skip)]
-    watermark_resource: HashMap<String, Vec<PyObject>>,
 }
 
 // PyO3 methods
@@ -462,7 +459,7 @@ impl MtgjsonCard {
             original_type: None,
             other_face_ids: Vec::new(),
             power: String::new(),
-            prices: MtgjsonPrices::new("", "", "", "USD", None, None, None, None, None, None),
+            prices: MtgjsonPrices::new("".to_string(), "".to_string(), "".to_string(), "USD".to_string(), None, None, None, None, None, None),
             printings: Vec::new(),
             promo_types: Vec::new(),
             purchase_urls: MtgjsonPurchaseUrls::new(),
@@ -490,7 +487,6 @@ impl MtgjsonCard {
             raw_purchase_urls: HashMap::new(),
             names: None,
             illustration_ids: Vec::new(),
-            watermark_resource: HashMap::new(),
         }
     }
 
