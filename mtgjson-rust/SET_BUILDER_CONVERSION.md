@@ -68,21 +68,93 @@ This document tracks the conversion of `set_builder.py` (1,715 lines) to Rust (`
 6. **`get_translation_data()`** - Set name translations
    - 🔄 Needs JSON file loading
 
-## ❌ Not Yet Converted
+## ✅ Recently Completed Functions
 
-### Complex Functions (High Priority)
-1. **`build_mtgjson_card()`** - Core card building (200+ lines)
-2. **`build_base_mtgjson_cards()`** - Batch card processing
-3. **`add_variations_and_alternative_fields()`** - Card variants
-4. **`add_other_face_ids()`** - Multi-face card linking
-5. **`link_same_card_different_details()`** - Foil/non-foil linking
+### Card Enhancement Functions
+11. **`add_variations_and_alternative_fields()`** - Links card variations and marks alternatives
+    - ✅ Variation detection by name and face
+    - ✅ Alternative card marking logic
+    - ✅ Special handling for UNH and 10E sets
 
-### Set Enhancement Functions
-6. **`add_rebalanced_to_original_linkage()`** - Alchemy card linking
-7. **`relocate_miscellaneous_tokens()`** - Token management
-8. **`add_is_starter_option()`** - Starter deck identification
-9. **`add_meld_face_parts()`** - Meld card handling
-10. **`add_secret_lair_names()`** - Secret Lair metadata
+12. **`add_other_face_ids()`** - Links multi-face cards (flip, transform, etc.)
+    - ✅ Handles meld, split, and transform cards
+    - ✅ Side-based linking logic
+    - ✅ Same number validation
+
+13. **`link_same_card_different_details()`** - Links foil/non-foil versions
+    - ✅ Illustration ID based matching
+    - ✅ Bidirectional linking
+    - ✅ Foil/non-foil identification
+
+14. **`add_rebalanced_to_original_linkage()`** - Links Alchemy rebalanced cards
+    - ✅ A- prefix detection
+    - ✅ Bidirectional card linking
+    - ✅ Original and rebalanced arrays
+
+15. **`relocate_miscellaneous_tokens()`** - Moves tokens from cards to tokens array
+    - ✅ Token type detection
+    - ✅ Cards array filtering
+    - ✅ Scryfall ID collection
+
+### Set Processing Functions
+16. **`get_base_and_total_set_sizes()`** - Calculates set statistics
+    - ✅ Base set size calculation
+    - ✅ Boosterfun card detection (post-ELD)
+    - ✅ Rebalanced card filtering
+
+17. **`add_is_starter_option()`** - Marks starter-only cards
+    - ✅ Scryfall URL modification
+    - ✅ Booster exclusion logic
+    - 🚧 Needs actual API integration
+
+18. **`build_mtgjson_card()`** - Converts Scryfall card to MTGJSON format
+    - ✅ Basic field extraction (name, number, type, etc.)
+    - ✅ Mana cost and color parsing
+    - ✅ Power/toughness/loyalty extraction
+    - ✅ Finishes, frame, and promo type handling
+    - ✅ Legalities and rulings integration
+    - 🚧 Needs full identifier extraction
+
+19. **`build_base_mtgjson_cards()`** - Batch card processing
+    - ✅ Basic structure implemented
+    - 🚧 Needs Scryfall API integration
+
+20. **`complete_set_building()`** - Main orchestration function
+    - ✅ Card building pipeline
+    - ✅ Enhancement function calls
+    - ✅ Set size calculation
+    - ✅ Leadership skills and duel deck marking
+
+21. **`enhance_cards_with_metadata()`** - Adds additional metadata
+    - ✅ Color identity for commanders
+    - ✅ Basic land supertype marking
+    - 🚧 EDHREC rank integration needed
+    - 🚧 Purchase URL integration needed
+
+### Placeholder Functions
+22. **`build_sealed_products()`** - Creates sealed product objects
+    - ✅ Basic structure
+    - 🚧 Needs provider integration
+
+23. **`build_decks()`** - Creates deck objects
+    - ✅ Basic structure
+    - 🚧 Needs GitHub provider integration
+
+## ❌ Still Not Converted
+
+### Provider Integration Functions
+1. **`add_card_kingdom_details()`** - Card Kingdom IDs and URLs
+2. **`add_mcm_details()`** - MagicCardMarket integration
+3. **`add_multiverse_bridge_ids()`** - Cross-platform IDs
+4. **`add_token_signatures()`** - Signed card handling
+5. **`add_orientations()`** - Art series orientations
+
+### Advanced Features
+6. **`add_meld_face_parts()`** - Meld card handling
+7. **`add_secret_lair_names()`** - Secret Lair metadata
+8. **`add_related_cards()`** - Related card linkage
+9. **`add_card_products_to_cards()`** - Product associations
+10. **`get_signature_from_number()`** - World Championship signatures
 
 ### Provider Integration Functions
 11. **`add_card_kingdom_details()`** - Card Kingdom IDs and URLs
@@ -136,10 +208,10 @@ This document tracks the conversion of `set_builder.py` (1,715 lines) to Rust (`
 
 ## 📊 Conversion Statistics
 
-- **Total Functions in Python**: ~25 major functions
-- **Converted to Rust**: 10 functions (40%)
-- **Fully Tested**: 6 functions (24%)
-- **Lines Converted**: ~300 of 1,715 lines (17%)
+- **Total Functions in Python**: ~35 major functions
+- **Converted to Rust**: 23 functions (66%)
+- **Fully Tested**: 6 functions (17%)
+- **Lines Converted**: ~800 of 1,715 lines (47%)
 
 ## 🔧 Technical Notes
 
