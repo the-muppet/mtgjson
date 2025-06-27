@@ -69,7 +69,7 @@ impl CardKingdomProvider {
             .clone();
         
         // Build mapping from Card Kingdom IDs to MTGJSON UUIDs
-        let mut card_kingdom_id_to_mtgjson = self.generate_entity_mapping(
+        let mut card_kingdom_id_to_mtgjson: HashMap<String, HashSet<String>> = self.generate_entity_mapping(
             all_printings_path,
             &["identifiers", "cardKingdomId"],
             &["uuid"],

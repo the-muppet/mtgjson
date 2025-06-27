@@ -209,8 +209,9 @@ impl ScryfallProvider {
             };
             
             // Remove token sets and skipped sets
+            let all_sets_clone = all_scryfall_sets.clone();
             let non_token_sets: HashSet<String> = all_scryfall_sets.into_iter()
-                .filter(|s| !(s.starts_with('T') && all_scryfall_sets.contains(&s[1..].to_string())))
+                .filter(|s| !(s.starts_with('T') && all_sets_clone.contains(&s[1..].to_string())))
                 .collect();
             
             let skip_set: HashSet<String> = final_skip_sets.into_iter().collect();
