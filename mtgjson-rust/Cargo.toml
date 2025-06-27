@@ -26,6 +26,7 @@ sha2 = "0.10"
 
 # New dependencies for providers
 async-trait = "0.1"
+scraper = "0.20"
 
 [dev-dependencies]
 anyhow = "1.0"
