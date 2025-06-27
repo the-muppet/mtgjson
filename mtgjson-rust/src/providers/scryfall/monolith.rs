@@ -118,9 +118,10 @@ impl ScryfallProvider {
                         return Err(ProviderError::NetworkError(format!("Unable to build {}. Not found", catalog_key)));
                     }
                     
+                    let empty_vec = vec![];
                     let catalog_data = data.get("data")
                         .and_then(|v| v.as_array())
-                        .unwrap_or(&vec![]);
+                        .unwrap_or(&empty_vec);
                     
                     Ok(catalog_data.iter()
                         .filter_map(|v| v.as_str())
@@ -142,9 +143,10 @@ impl ScryfallProvider {
                         return Err(ProviderError::NetworkError("Downloading Scryfall data failed".to_string()));
                     }
                     
+                    let empty_vec = vec![];
                     let sets_data = data.get("data")
                         .and_then(|v| v.as_array())
-                        .unwrap_or(&vec![]);
+                        .unwrap_or(&empty_vec);
                     
                     let mut set_codes: Vec<String> = sets_data.iter()
                         .filter_map(|set_obj| {
@@ -155,9 +157,10 @@ impl ScryfallProvider {
                         .collect();
                     
                     // Remove Scryfall token sets (but leave extra sets)
+                    let set_codes_clone = set_codes.clone();
                     set_codes.retain(|set_code| {
                         !(set_code.starts_with('T') && 
-                          set_codes.contains(&set_code[1..].to_string()))
+                          set_codes_clone.contains(&set_code[1..].to_string()))
                     });
                     
                     set_codes.sort();
@@ -241,9 +244,10 @@ impl ScryfallProvider {
                 break;
             }
             
+            let empty_vec = vec![];
             let data_response = response.get("data")
                 .and_then(|v| v.as_array())
-                .unwrap_or(&vec![]);
+                .unwrap_or(&empty_vec);
             
             all_cards.extend(data_response.clone());
             
@@ -262,9 +266,10 @@ impl ScryfallProvider {
     /// Get card names from a URL search
     async fn get_card_names(&self, url: &str) -> ProviderResult<Vec<String>> {
         let data = self.download(url, None).await?;
+        let empty_vec = vec![];
         let cards = data.get("data")
             .and_then(|v| v.as_array())
-            .unwrap_or(&vec![]);
+            .unwrap_or(&empty_vec);
         
         let names: HashSet<String> = cards.iter()
             .filter_map(|card| {

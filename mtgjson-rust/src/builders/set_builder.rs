@@ -1344,7 +1344,8 @@ fn process_deck_list(
 
 /// Enhanced cards with metadata from external sources
 pub fn enhance_cards_with_metadata(mtgjson_cards: &mut [MtgjsonCardObject]) {
-    println!("Enhancing {} cards with metadata", mtgjson_cards.len());
+    let cards_count = mtgjson_cards.len();
+    println!("Enhancing {} cards with metadata", cards_count);
     
     for card in mtgjson_cards.iter_mut() {
         // Add EDHREC rank if available
@@ -1359,12 +1360,12 @@ pub fn enhance_cards_with_metadata(mtgjson_cards: &mut [MtgjsonCardObject]) {
         // This would call CardKingdom, TCGPlayer, etc. APIs
         
         // For now, just log that we're processing the card
-        if mtgjson_cards.len() <= 10 {  // Only log for small sets to avoid spam
+        if cards_count <= 10 {  // Only log for small sets to avoid spam
             println!("Enhanced metadata for card: {}", card.name);
         }
     }
     
-    println!("Finished enhancing {} cards with metadata", mtgjson_cards.len());
+    println!("Finished enhancing {} cards with metadata", cards_count);
 }
 
 /// Build base MTGJSON cards from Scryfall data

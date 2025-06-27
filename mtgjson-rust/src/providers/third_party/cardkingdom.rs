@@ -122,11 +122,13 @@ impl CardKingdomProvider {
     /// Update sealed URLs (async version)
     async fn update_sealed_urls_async(&self, sealed_products: &mut Vec<MtgjsonSealedProductObject>) -> ProviderResult<()> {
         let api_data = self.download(Self::SEALED_URL, None).await?;
+        let data_array = api_data.get("data")
+            .and_then(|v| v.as_array())
+            .unwrap_or(&vec![]);
         
         for product in sealed_products {
             if let Some(ref identifiers) = product.identifiers {
                 if let Some(card_kingdom_id) = &identifiers.card_kingdom_id {
-                if let Some(data_array) = api_data.get("data").and_then(|v| v.as_array()) {
                     for remote_product in data_array {
                         if let Some(remote_id) = remote_product.get("id").and_then(|v| v.as_str()) {
                             if remote_id == card_kingdom_id {
