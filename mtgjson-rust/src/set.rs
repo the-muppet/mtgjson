@@ -176,6 +176,28 @@ impl MtgjsonSet {
                 self.code.as_deref().unwrap_or("???"))
     }
 
+    /// Python repr representation
+    pub fn __repr__(&self) -> String {
+        format!("MtgjsonSet(code={:?}, name={:?})", self.code, self.name)
+    }
+
+    /// Python equality method
+    pub fn __eq__(&self, other: &MtgjsonSet) -> bool {
+        self.code == other.code
+    }
+
+    /// Python hash method
+    pub fn __hash__(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        
+        let mut hasher = DefaultHasher::new();
+        if let Some(ref code) = self.code {
+            code.hash(&mut hasher);
+        }
+        hasher.finish()
+    }
+
     /// Get the Windows-safe set code
     pub fn get_windows_safe_set_code(&self) -> String {
         MtgjsonUtils::make_windows_safe_filename(&self.code.as_ref().unwrap_or(&String::new()))

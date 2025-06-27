@@ -50,6 +50,9 @@ mod set_builder;
 // Wrapper module for set_builder functions to expose as PyO3 functions
 mod set_builder_functions;
 
+// Wrapper module for utility functions
+mod utils_functions;
+
 // Compiled classes
 mod compiled_classes;
 
@@ -144,6 +147,11 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_builder_functions::mark_duel_decks, m)?)?;
     m.add_function(wrap_pyfunction!(set_builder_functions::enhance_cards_with_metadata, m)?)?;
     m.add_function(wrap_pyfunction!(set_builder_functions::build_base_mtgjson_cards, m)?)?;
+    
+    // Add utility functions
+    m.add_function(wrap_pyfunction!(utils_functions::to_camel_case, m)?)?;
+    m.add_function(wrap_pyfunction!(utils_functions::make_windows_safe_filename, m)?)?;
+    m.add_function(wrap_pyfunction!(utils_functions::clean_card_number, m)?)?;
     
     Ok(())
 }
