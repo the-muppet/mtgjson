@@ -655,6 +655,7 @@ impl Default for MtgjsonCard {
 
 impl PartialOrd for MtgjsonCard {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        // Exact port of Python __lt__ logic
         let self_side = self.side.as_deref().unwrap_or("");
         let other_side = other.side.as_deref().unwrap_or("");
 
@@ -662,50 +663,53 @@ impl PartialOrd for MtgjsonCard {
             return Some(self_side.cmp(other_side));
         }
 
-        let (self_number_clean, self_len) = MtgjsonUtils::clean_card_number(&self.number);
-        let (other_number_clean, other_len) = MtgjsonUtils::clean_card_number(&other.number);
+        let self_number_clean: String = self.number.chars().filter(|c| c.is_ascii_digit()).collect();
+        let self_number_clean = if self_number_clean.is_empty() { "100000".to_string() } else { self_number_clean };
+        let self_number_clean_int = self_number_clean.parse::<u32>().unwrap_or(100000);
 
-        // Implement the complex comparison logic from Python
-        if self.number.chars().all(|c| c.is_ascii_digit()) && 
-           other.number.chars().all(|c| c.is_ascii_digit()) {
-            if self_number_clean == other_number_clean {
-                if self_len != other_len {
-                    return Some(self_len.cmp(&other_len));
+        let other_number_clean: String = other.number.chars().filter(|c| c.is_ascii_digit()).collect();
+        let other_number_clean = if other_number_clean.is_empty() { "100000".to_string() } else { other_number_clean };
+        let other_number_clean_int = other_number_clean.parse::<u32>().unwrap_or(100000);
+
+        // Check if both numbers are pure digits
+        let self_is_digit = self.number == self_number_clean;
+        let other_is_digit = other.number == other_number_clean;
+
+        if self_is_digit && other_is_digit {
+            if self_number_clean_int == other_number_clean_int {
+                if self_number_clean.len() != other_number_clean.len() {
+                    return Some(self_number_clean.len().cmp(&other_number_clean.len()));
                 }
                 return Some(self_side.cmp(other_side));
             }
-            return Some(self_number_clean.cmp(&other_number_clean));
+            return Some(self_number_clean_int.cmp(&other_number_clean_int));
         }
 
-        if self.number.chars().all(|c| c.is_ascii_digit()) {
-            if self_number_clean == other_number_clean {
+        if self_is_digit {
+            if self_number_clean_int == other_number_clean_int {
                 return Some(Ordering::Less);
             }
-            return Some(self_number_clean.cmp(&other_number_clean));
+            return Some(self_number_clean_int.cmp(&other_number_clean_int));
         }
 
-        if other.number.chars().all(|c| c.is_ascii_digit()) {
-            if self_number_clean == other_number_clean {
+        if other_is_digit {
+            if self_number_clean_int == other_number_clean_int {
                 return Some(Ordering::Greater);
             }
-            return Some(self_number_clean.cmp(&other_number_clean));
+            return Some(self_number_clean_int.cmp(&other_number_clean_int));
         }
 
-        if self_number_clean == other_number_clean {
+        if self_number_clean_int == other_number_clean_int {
+            if self_number_clean.len() != other_number_clean.len() {
+                return Some(self_number_clean.len().cmp(&other_number_clean.len()));
+            }
             if self_side.is_empty() && other_side.is_empty() {
                 return Some(self.number.cmp(&other.number));
             }
             return Some(self_side.cmp(other_side));
         }
 
-        if self_number_clean == other_number_clean {
-            if self_len != other_len {
-                return Some(self_len.cmp(&other_len));
-            }
-            return Some(self_side.cmp(other_side));
-        }
-
-        Some(self_number_clean.cmp(&other_number_clean))
+        Some(self_number_clean_int.cmp(&other_number_clean_int))
     }
 }
 
