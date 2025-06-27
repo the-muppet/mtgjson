@@ -141,6 +141,9 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_builder_functions::parse_foreign, m)?)?;
     m.add_function(wrap_pyfunction!(set_builder_functions::parse_printings, m)?)?;
     m.add_function(wrap_pyfunction!(set_builder_functions::parse_rulings, m)?)?;
+    m.add_function(wrap_pyfunction!(set_builder_functions::mark_duel_decks, m)?)?;
+    m.add_function(wrap_pyfunction!(set_builder_functions::enhance_cards_with_metadata, m)?)?;
+    m.add_function(wrap_pyfunction!(set_builder_functions::build_base_mtgjson_cards, m)?)?;
     
     Ok(())
 }

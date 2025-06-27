@@ -169,6 +169,13 @@ impl MtgjsonSet {
         })
     }
 
+    /// Python string representation
+    pub fn __str__(&self) -> String {
+        format!("{} ({})", 
+                self.name, 
+                self.code.as_deref().unwrap_or("???"))
+    }
+
     /// Get the Windows-safe set code
     pub fn get_windows_safe_set_code(&self) -> String {
         MtgjsonUtils::make_windows_safe_filename(&self.code.as_ref().unwrap_or(&String::new()))
