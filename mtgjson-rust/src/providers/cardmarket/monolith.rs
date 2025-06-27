@@ -313,7 +313,7 @@ impl CardMarketProvider {
     }
     
     /// Get MKM expansion data from API
-    pub async fn get_mkm_expansion_data(&self) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+    pub fn get_mkm_expansion_data(&self) -> PyResult<Vec<serde_json::Value>> {
         if !self.has_mkm_config() {
             eprintln!("Warning: MKM configuration not found");
             return Ok(Vec::new());
@@ -352,7 +352,7 @@ impl CardMarketProvider {
     }
     
     /// Get MKM expansion singles for a specific expansion
-    pub async fn get_mkm_expansion_singles(&self, expansion_id: i32) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+    pub fn get_mkm_expansion_singles(&self, expansion_id: i32) -> PyResult<Vec<serde_json::Value>> {
         if !self.has_mkm_config() {
             eprintln!("Warning: MKM configuration not found");
             return Ok(Vec::new());

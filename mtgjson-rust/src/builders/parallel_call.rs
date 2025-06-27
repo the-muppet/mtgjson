@@ -49,7 +49,7 @@ pub fn parallel_call(
         match (repeatable_args, force_starmap) {
             (Some(repeat_args), _) => {
                 // Optimized repeatable args case
-                let repeat_objects: SmallVec<[PyObject; 8]> = repeat_args.iter()
+                let repeat_objects: Vec<PyObject> = repeat_args.iter()
                     .map(|arg| arg.to_object(py))
                     .collect();
                 

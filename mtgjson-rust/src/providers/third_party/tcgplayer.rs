@@ -54,7 +54,8 @@ impl TCGPlayerProvider {
         let runtime = tokio::runtime::Runtime::new()?;
         runtime.block_on(async {
             self.get_tcgplayer_magic_set_ids_async().await
-        }).map_err(|e: ProviderError| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Set IDs error: {}", e)))
+                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Set IDs error: {}", e)))
+        })
     }
     
     /// Get TCGPlayer SKU data
@@ -62,7 +63,8 @@ impl TCGPlayerProvider {
         let runtime = tokio::runtime::Runtime::new()?;
         runtime.block_on(async {
             self.get_tcgplayer_sku_data_async(group_id_and_name).await
-        }).map_err(|e: ProviderError| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("SKU data error: {}", e)))
+                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("SKU data error: {}", e)))
+        })
     }
 }
 
