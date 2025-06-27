@@ -1,12 +1,14 @@
 # Version control
 .git/
 .gitignore
+**/.git/
+**/.gitignore
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
+# Python cache and build artifacts
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/*.so
 .Python
 build/
 develop-eggs/
@@ -20,43 +22,65 @@ parts/
 sdist/
 var/
 wheels/
-*.egg-info/
+**/*.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# PyO3/Rust
+# Rust build artifacts (but keep source and config)
 mtgjson-rust/target/
+**/target/
 *.whl
 
 # IDEs
 .vscode/
 .idea/
-*.swp
-*.swo
+**/*.swp
+**/*.swo
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
+**/.DS_Store
+**/Thumbs.db
 
 # Testing
 .pytest_cache/
 .coverage
 .tox/
 htmlcov/
+tests/
 
-# Docs
+# Documentation
 *.md
 docs/
+rust_docs.md
+py_bindings.md
+README.md
+CONTRIBUTING.md
+LICENSE.txt
+MANIFEST.in
+SIGNATURE_COMPARISON.md
+TESTING_STRATEGY.md
+
+# Development tools
+build_rust.py
+build_rust.bat
+Makefile
+docker-bake.hcl
+.github/
+tox.ini
+mypy.ini
+*.ini
 
 # Temporary files
 *.tmp
 *.log
 *.bak
+*.orig
 
-# Exclude everything except what we need
-!mtgjson5/
-!mtgjson-rust/src/
-!mtgjson-rust/Cargo.toml
-!mtgjson-rust/Cargo.lock
-!requirements.txt
+# Specific project files not needed in Docker
+setup.py
+requirements_test.txt
+test_*.py
+mtgjson.properties.example

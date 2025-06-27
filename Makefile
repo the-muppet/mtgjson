@@ -6,7 +6,7 @@
 .PHONY: rust-local rust-wheel rust-debug rust-check troubleshoot install-rust-deps
 .PHONY: rust-test rust-clean dev-cycle rust-dev-cycle full-dev-cycle setup-dev
 .PHONY: platform-help clean-all run run-dev shell inspect benchmark logs
-.PHONY: install-buildx setup-builder release
+.PHONY: install-buildx setup-builder release docker-debug
 
 # Default registry and tag
 REGISTRY ?= mtgjson
@@ -158,6 +158,30 @@ ifeq ($(PLATFORM),windows)
 else
 	$(BUILD_SCRIPT) --troubleshoot
 endif
+
+docker-debug: ## Debug Docker build context and file availability
+	@echo "$(GREEN)Docker Build Context Debug$(NC)"
+	@echo "=========================="
+	@echo "Current directory: $$(pwd)"
+	@echo ""
+	@echo "Required files check:"
+	@if [ -f "Dockerfile" ]; then echo "✓ Dockerfile found"; else echo "✗ Dockerfile missing"; fi
+	@if [ -f "requirements.txt" ]; then echo "✓ requirements.txt found"; else echo "✗ requirements.txt missing"; fi
+	@if [ -d "mtgjson5" ]; then echo "✓ mtgjson5/ directory found"; else echo "✗ mtgjson5/ directory missing"; fi
+	@if [ -d "mtgjson-rust" ]; then echo "✓ mtgjson-rust/ directory found"; else echo "✗ mtgjson-rust/ directory missing"; fi
+	@if [ -f "mtgjson-rust/Cargo.toml" ]; then echo "✓ mtgjson-rust/Cargo.toml found"; else echo "✗ mtgjson-rust/Cargo.toml missing"; fi
+	@if [ -f "mtgjson-rust/Cargo.lock" ]; then echo "✓ mtgjson-rust/Cargo.lock found"; else echo "✗ mtgjson-rust/Cargo.lock missing"; fi
+	@echo ""
+	@echo "Directory contents:"
+	@ls -la
+	@echo ""
+	@echo "mtgjson-rust contents:"
+	@if [ -d "mtgjson-rust" ]; then ls -la mtgjson-rust/; else echo "Directory not found"; fi
+	@echo ""
+	@echo "Docker build context test:"
+	@echo "Files that would be sent to Docker:"
+	@tar --exclude-from=.dockerignore -czf - . 2>/dev/null | tar -tzf - | head -20
+	@echo "..."
 
 install-rust-deps: ## Install Rust and required dependencies
 	@echo "$(GREEN)Installing Rust dependencies...$(NC)"

@@ -3,7 +3,7 @@ ARG RUST_VERSION=1.75
 ARG PYTHON_VERSION=3.11
 
 # Multi-stage build: Rust compilation stage
-FROM rust:${RUST_VERSION}-slim-buster as rust-builder
+FROM rust:${RUST_VERSION}-slim-buster AS rust-builder
 
 # Re-declare ARGs for this stage
 ARG RUST_VERSION=1.75
@@ -49,11 +49,11 @@ RUN ls -la /build/wheels/ && \
     python3 -c "import os; wheels = [f for f in os.listdir('/build/wheels') if f.endswith('.whl')]; print(f'Built wheels: {wheels}'); assert wheels, 'No wheels found!'"
 
 # Testing stage (optional target)
-FROM rust-builder as test
+FROM rust-builder AS test
 RUN cargo test --release
 
 # Final stage: Python application
-FROM python:${PYTHON_VERSION}-slim-buster as final
+FROM python:${PYTHON_VERSION}-slim-buster AS final
 
 # Re-declare ARGs for this stage
 ARG PYTHON_VERSION=3.11
