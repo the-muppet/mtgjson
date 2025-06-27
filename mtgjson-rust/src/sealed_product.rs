@@ -1,9 +1,7 @@
-use crate::base::{skip_if_empty_optional_string, JsonObject};
-use crate::identifiers::MtgjsonIdentifiers;
-use crate::purchase_urls::MtgjsonPurchaseUrls;
+use crate::base::JsonObject;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 /// MTGJSON Sealed Product Category
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

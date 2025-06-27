@@ -30,6 +30,7 @@ impl OutputGenerator {
     }
     
     /// Generate all compiled output files with high performance
+    #[pyo3(signature = (pretty_print=None))]
     pub fn generate_compiled_output_files(&self, pretty_print: Option<bool>) -> PyResult<()> {
         // Create output directory
         let output_dir = Path::new(&self.output_path);
