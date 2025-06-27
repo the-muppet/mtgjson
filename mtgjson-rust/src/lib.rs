@@ -47,6 +47,9 @@ mod parallel_call;
 mod price_builder;
 mod set_builder;
 
+// Wrapper module for set_builder functions to expose as PyO3 functions
+mod set_builder_functions;
+
 // Compiled classes
 mod compiled_classes;
 
@@ -74,6 +77,13 @@ use compiled_classes::{
     MtgjsonAtomicCards, MtgjsonCardTypes, MtgjsonEnumValues,
     MtgjsonSetList, MtgjsonTcgplayerSkus
 };
+
+// Re-export for tests and external usage
+pub use card::MtgjsonCard;
+pub use output_generator::OutputGenerator;
+pub use price_builder::PriceBuilder;
+pub use parallel_call::{ParallelProcessor, ParallelIterator};
+pub use set_builder_functions::*;
 
 /// Python module definition
 #[pymodule]
@@ -121,6 +131,17 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<price_builder::PriceBuilder>()?;
     m.add_class::<parallel_call::ParallelProcessor>()?;
     m.add_class::<parallel_call::ParallelIterator>()?;
+    
+    // Add set_builder module functions
+    m.add_function(wrap_pyfunction!(set_builder_functions::parse_card_types, m)?)?;
+    m.add_function(wrap_pyfunction!(set_builder_functions::get_card_colors, m)?)?;
+    m.add_function(wrap_pyfunction!(set_builder_functions::get_card_cmc, m)?)?;
+    m.add_function(wrap_pyfunction!(set_builder_functions::is_number, m)?)?;
+    m.add_function(wrap_pyfunction!(set_builder_functions::parse_legalities, m)?)?;
+    m.add_function(wrap_pyfunction!(set_builder_functions::build_mtgjson_set, m)?)?;
+    m.add_function(wrap_pyfunction!(set_builder_functions::parse_foreign, m)?)?;
+    m.add_function(wrap_pyfunction!(set_builder_functions::parse_printings, m)?)?;
+    m.add_function(wrap_pyfunction!(set_builder_functions::parse_rulings, m)?)?;
     
     Ok(())
 }

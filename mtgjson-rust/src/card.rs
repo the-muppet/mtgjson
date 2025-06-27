@@ -340,6 +340,7 @@ pub struct MtgjsonCard {
     pub toughness: String,
     
     #[pyo3(get, set)]
+    #[pyo3(name = "type")]
     pub type_: String,
     
     #[serde(skip_serializing_if = "skip_if_empty_vec")]
@@ -492,10 +493,19 @@ impl MtgjsonCard {
         }
     }
 
-    /// Convert to JSON string
-    pub fn to_json(&self) -> PyResult<String> {
-        serde_json::to_string(self).map_err(|e| {
-            pyo3::exceptions::PyValueError::new_err(format!("Serialization error: {}", e))
+    /// Convert to JSON Dict (Python-compatible)
+    pub fn to_json(&self) -> PyResult<pyo3::types::PyDict> {
+        use pyo3::prelude::*;
+        
+        Python::with_gil(|py| {
+            let json_str = serde_json::to_string(self).map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("Serialization error: {}", e))
+            })?;
+            
+            let json_module = py.import_bound("json")?;
+            let dict = json_module.call_method1("loads", (json_str,))?;
+            
+            Ok(dict.downcast::<pyo3::types::PyDict>()?.clone())
         })
     }
 
@@ -593,18 +603,53 @@ impl MtgjsonCard {
         ]
     }
 
-    /// Check if card is equal to another (by number and side)
-    pub fn eq(&self, other: &MtgjsonCard) -> bool {
-        self.number == other.number && 
-        (self.side.as_deref().unwrap_or("") == other.side.as_deref().unwrap_or(""))
+    /// Python equality method
+    pub fn __eq__(&self, other: &MtgjsonCard) -> bool {
+        self.uuid == other.uuid
     }
 
-    /// Compare cards for sorting
+    /// Python less-than comparison for sorting
+    pub fn __lt__(&self, other: &MtgjsonCard) -> bool {
+        match self.partial_cmp(other) {
+            Some(std::cmp::Ordering::Less) => true,
+            _ => false,
+        }
+    }
+
+    /// Python string representation
+    pub fn __str__(&self) -> String {
+        format!("{} ({}) #{}", self.name, self.set_code, self.number)
+    }
+
+    /// Python repr representation
+    pub fn __repr__(&self) -> String {
+        format!("MtgjsonCard(name='{}', set_code='{}', uuid='{}')", 
+                self.name, self.set_code, self.uuid)
+    }
+
+    /// Python hash method
+    pub fn __hash__(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        
+        let mut hasher = DefaultHasher::new();
+        self.uuid.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    /// Legacy method for backwards compatibility - use __eq__ instead
+    #[deprecated(note = "Use __eq__ instead")]
+    pub fn eq(&self, other: &MtgjsonCard) -> bool {
+        self.__eq__(other)
+    }
+
+    /// Legacy method for backwards compatibility - use __lt__ instead
+    #[deprecated(note = "Use __lt__ instead")]
     pub fn compare(&self, other: &MtgjsonCard) -> PyResult<i32> {
         match self.partial_cmp(other) {
-            Some(Ordering::Less) => Ok(-1),
-            Some(Ordering::Equal) => Ok(0),
-            Some(Ordering::Greater) => Ok(1),
+            Some(std::cmp::Ordering::Less) => Ok(-1),
+            Some(std::cmp::Ordering::Equal) => Ok(0),
+            Some(std::cmp::Ordering::Greater) => Ok(1),
             None => Ok(0),
         }
     }
