@@ -1,104 +1,79 @@
 use pyo3::prelude::*;
+use thiserror::Error;
+
+/// Provider error types
+#[derive(Error, Debug)]
+pub enum ProviderError {
+    #[error("Network error: {0}")]
+    NetworkError(String),
+    #[error("Parse error: {0}")]
+    ParseError(String),
+    #[error("Authentication error: {0}")]
+    AuthError(String),
+    #[error("Rate limit exceeded")]
+    RateLimitError,
+}
+
+/// Result type for provider operations
+pub type ProviderResult<T> = Result<T, ProviderError>;
 
 // Core provider modules
-pub mod abstract_;
-pub mod cardhoarder;
-pub mod cardkingdom;
-pub mod gatherer;
-pub mod mtgban;
-pub mod multiversebridge;
-pub mod tcgplayer;
-pub mod whats_in_standard;
-pub mod wizards;
+pub mod provider_base;
+pub mod third_party;
 
-// GitHub providers
-pub mod github {
-    pub mod boosters;
-    pub mod card_sealed_products;
-    pub mod decks;
-    pub mod mtgsqlite;
-    pub mod sealed;
-}
+// Subdirectory provider modules
+pub mod cardmarket;
+pub mod edhrec;
+pub mod github;
+pub mod mtgwiki;
+pub mod scryfall;
 
-// CardMarket providers
-pub mod cardmarket {
-    pub mod monolith;
-}
+// Re-export main provider types and implementations from third_party
+pub use provider_base::{AbstractProvider, BaseProvider, RateLimiter};
+pub use third_party::cardhoarder::CardHoarderProvider;
+pub use third_party::cardkingdom::CardKingdomProvider;
+pub use third_party::gatherer::GathererProvider;
+pub use third_party::mtgban::MTGBanProvider;
+pub use third_party::multiverse_bridge::MultiverseBridgeProvider;
+pub use third_party::tcgplayer::TCGPlayerProvider;
+pub use third_party::whats_in_standard::WhatsInStandardProvider;
+pub use third_party::wizards::WizardsProvider;
 
-// EDHRec providers
-pub mod edhrec {
-    pub mod card_ranks;
-}
-
-// MTGWiki providers
-pub mod mtgwiki {
-    pub mod secret_lair;
-}
-
-// Scryfall providers
-pub mod scryfall {
-    pub mod monolith;
-    pub mod orientation_detector;
-    pub mod set_language_detector;
-    pub mod sf_utils;
-}
-
-// Third-party providers
-pub mod third_party {
-    pub mod cardhoarder;
-    pub mod cardkingdom;
-    pub mod gatherer;
-    pub mod mtgban;
-    pub mod multiverse_bridge;
-    pub mod tcgplayer;
-    pub mod whats_in_standard;
-    pub mod wizards;
-}
-
-// Re-export main provider types
-pub use abstract_::AbstractProvider;
-pub use cardhoarder::CardHoarderProvider;
-pub use cardkingdom::CardKingdomProvider;
+// Re-export providers from subdirectories
 pub use cardmarket::monolith::CardMarketProvider;
 pub use edhrec::card_ranks::EdhrecProviderCardRanks;
-pub use gatherer::GathererProvider;
 pub use github::boosters::GitHubBoostersProvider;
 pub use github::card_sealed_products::GitHubCardSealedProductsProvider;
 pub use github::decks::GitHubDecksProvider;
 pub use github::mtgsqlite::GitHubMTGSqliteProvider;
 pub use github::sealed::GitHubSealedProvider;
-pub use mtgban::MTGBanProvider;
 pub use mtgwiki::secret_lair::MtgWikiProviderSecretLair;
-pub use multiversebridge::MultiverseBridgeProvider;
 pub use scryfall::monolith::ScryfallProvider;
 pub use scryfall::orientation_detector::ScryfallProviderOrientationDetector;
-pub use scryfall::set_language_detector::ScryfallProviderSetLanguageDetector;
-pub use tcgplayer::TCGPlayerProvider;
-pub use whats_in_standard::WhatsInStandardProvider;
-pub use wizards::WizardsProvider;
 
 /// Add all provider classes to Python module
 pub fn add_provider_classes_to_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // Core providers
+    // Core providers from third_party
     m.add_class::<CardHoarderProvider>()?;
     m.add_class::<CardKingdomProvider>()?;
+    m.add_class::<GathererProvider>()?;
+    m.add_class::<MTGBanProvider>()?;
+    m.add_class::<MultiverseBridgeProvider>()?;
+    m.add_class::<TCGPlayerProvider>()?;
+    m.add_class::<WhatsInStandardProvider>()?;
+    m.add_class::<WizardsProvider>()?;
+    
+    // Subdirectory providers
     m.add_class::<CardMarketProvider>()?;
     m.add_class::<EdhrecProviderCardRanks>()?;
-    m.add_class::<GathererProvider>()?;
     m.add_class::<GitHubBoostersProvider>()?;
     m.add_class::<GitHubCardSealedProductsProvider>()?;
     m.add_class::<GitHubDecksProvider>()?;
     m.add_class::<GitHubMTGSqliteProvider>()?;
     m.add_class::<GitHubSealedProvider>()?;
-    m.add_class::<MTGBanProvider>()?;
     m.add_class::<MtgWikiProviderSecretLair>()?;
-    m.add_class::<MultiverseBridgeProvider>()?;
     m.add_class::<ScryfallProvider>()?;
     m.add_class::<ScryfallProviderOrientationDetector>()?;
-    m.add_class::<ScryfallProviderSetLanguageDetector>()?;
-    m.add_class::<TCGPlayerProvider>()?;
-    m.add_class::<WhatsInStandardProvider>()?;
-    m.add_class::<WizardsProvider>()?;
     
     Ok(())
 }

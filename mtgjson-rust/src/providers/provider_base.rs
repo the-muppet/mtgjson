@@ -3,7 +3,7 @@ use reqwest::{Client, Response};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use chrono::{DateTime, Utc};
-use crate::prices::MtgjsonPrices;
+use crate::prices::MtgjsonPricesObject;
 use super::{ProviderError, ProviderResult};
 
 /// Abstract provider trait that all providers must implement
@@ -46,7 +46,7 @@ pub trait AbstractProvider: Send + Sync {
         third_party_to_mtgjson: &HashMap<String, HashSet<String>>,
         price_data_rows: &[Value],
         card_platform_id_key: &str,
-        default_prices_object: &MtgjsonPrices,
+        default_prices_object: &MtgjsonPricesObject,
         foil_key: &str,
         retail_key: Option<&str>,
         retail_quantity_key: Option<&str>,
@@ -54,7 +54,7 @@ pub trait AbstractProvider: Send + Sync {
         buy_quantity_key: Option<&str>,
         etched_key: Option<&str>,
         etched_value: Option<&str>,
-    ) -> HashMap<String, MtgjsonPrices>;
+    ) -> HashMap<String, MtgjsonPricesObject>;
 }
 
 /// Base provider struct that implements common functionality

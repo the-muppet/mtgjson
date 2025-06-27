@@ -3,8 +3,8 @@ use pyo3::prelude::*;
 use reqwest::Response;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use crate::prices::MtgjsonPrices;
-use super::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
+use crate::prices::MtgjsonPricesObject;
+use crate::providers::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
 
 #[pyclass(name = "GitHubSealedProvider")]
 pub struct GitHubSealedProvider {

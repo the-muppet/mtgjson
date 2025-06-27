@@ -3,9 +3,9 @@ use pyo3::prelude::*;
 use reqwest::Response;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use crate::prices::MtgjsonPrices;
-use crate::sealed_product::MtgjsonSealedProduct;
-use super::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
+use crate::prices::MtgjsonPricesObject;
+use crate::sealed_product::MtgjsonSealedProductObject;
+use crate::providers::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
 
 #[pyclass(name = "TCGPlayerProvider")]
 pub struct TCGPlayerProvider {

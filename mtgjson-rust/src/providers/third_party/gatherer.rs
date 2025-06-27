@@ -3,8 +3,8 @@ use pyo3::prelude::*;
 use reqwest::Response;
 use serde_json::Value;
 use std::collections::HashMap;
-use crate::prices::MtgjsonPrices;
-use super::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
+use crate::prices::MtgjsonPricesObject;
+use crate::providers::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
 
 #[pyclass(name = "GathererProvider")]
 pub struct GathererProvider {
@@ -79,13 +79,15 @@ impl GathererProvider {
     }
 
     /// Static method to build HTTP header
+    #[staticmethod]
     fn build_http_header_static() -> PyResult<HashMap<String, String>> {
-        let github_token = MtgjsonConfig().get("GitHub", "api_token");
-        
+        // For now, return empty headers - this would need actual config implementation
         let mut headers = HashMap::new();
-        if !github_token.is_empty() {
-            headers.insert("Authorization".to_string(), format!("Bearer {}", github_token));
-        }
+        // TODO: Implement actual config reading
+        // let github_token = MtgjsonConfig().get("GitHub", "api_token");
+        // if !github_token.is_empty() {
+        //     headers.insert("Authorization".to_string(), format!("Bearer {}", github_token));
+        // }
         
         Ok(headers)
     }
@@ -125,7 +127,7 @@ impl AbstractProvider for GathererProvider {
         self.base.get(url, params).await
     }
 
-    async fn generate_today_price_dict(&self, _all_printings_path: &str) -> ProviderResult<HashMap<String, MtgjsonPrices>> {
+    async fn generate_today_price_dict(&self, _all_printings_path: &str) -> ProviderResult<HashMap<String, MtgjsonPricesObject>> {
         // Gatherer doesn't provide price data
         Ok(HashMap::new())
     }

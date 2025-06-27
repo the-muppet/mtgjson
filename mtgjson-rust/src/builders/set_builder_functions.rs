@@ -1,5 +1,5 @@
-use crate::card::MtgjsonCardObject;
-use crate::set_builder::{
+use crate::classes::card::MtgjsonCardObject;
+use crate::builders::set_builder::{
     parse_card_types as inner_parse_card_types,
     get_card_colors as inner_get_card_colors,
     get_card_cmc as inner_get_card_cmc,
@@ -13,10 +13,10 @@ use crate::set_builder::{
     enhance_cards_with_metadata as inner_enhance_cards_with_metadata,
     build_base_mtgjson_cards as inner_build_base_mtgjson_cards,
 };
-use crate::foreign_data::MtgjsonForeignDataObject;
-use crate::legalities::MtgjsonLegalitiesObject;
-use crate::rulings::MtgjsonRulingObject;
-use crate::set::MtgjsonSetObject;
+use crate::classes::foreign_data::MtgjsonForeignDataObject;
+use crate::classes::legalities::MtgjsonLegalitiesObject;
+use crate::classes::rulings::MtgjsonRulingObject;
+use crate::classes::set::MtgjsonSetObject;
 use pyo3::prelude::*;
 use std::collections::HashMap;
 

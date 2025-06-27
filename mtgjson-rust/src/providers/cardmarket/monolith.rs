@@ -7,8 +7,8 @@ use std::path::Path;
 use std::time::Duration;
 use log::{warn, error, info};
 use tokio::time::sleep;
-use crate::classes::MtgjsonPricesObject;
-use super::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
+use crate::prices::MtgjsonPricesObject;
+use crate::providers::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
 
 /// CardMarket API provider for MTG price data
 #[pyclass(name = "CardMarketProvider")]

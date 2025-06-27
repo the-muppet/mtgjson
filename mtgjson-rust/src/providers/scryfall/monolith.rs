@@ -1,11 +1,13 @@
 use async_trait::async_trait;
 use pyo3::prelude::*;
+use pyo3::types::PyList;
 use reqwest::Response;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use tokio::time::{sleep, Duration};
-use crate::prices::MtgjsonPrices;
-use super::{super::{AbstractProvider, BaseProvider, RateLimiter, ProviderError, ProviderResult}, sf_utils};
+use crate::prices::MtgjsonPricesObject;
+use crate::providers::{AbstractProvider, BaseProvider, RateLimiter, ProviderError, ProviderResult};
+use super::sf_utils;
 
 #[pyclass(name = "ScryfallProvider")]
 pub struct ScryfallProvider {
@@ -328,7 +330,7 @@ impl AbstractProvider for ScryfallProvider {
         third_party_to_mtgjson: &HashMap<String, HashSet<String>>,
         price_data_rows: &[Value],
         card_platform_id_key: &str,
-        default_prices_object: &MtgjsonPrices,
+        default_prices_object: &MtgjsonPricesObject,
         foil_key: &str,
         retail_key: Option<&str>,
         retail_quantity_key: Option<&str>,
@@ -336,8 +338,8 @@ impl AbstractProvider for ScryfallProvider {
         buy_quantity_key: Option<&str>,
         etched_key: Option<&str>,
         etched_value: Option<&str>,
-    ) -> HashMap<String, MtgjsonPrices> {
-        let mut today_dict: HashMap<String, MtgjsonPrices> = HashMap::new();
+    ) -> HashMap<String, MtgjsonPricesObject> {
+        let mut today_dict: HashMap<String, MtgjsonPricesObject> = HashMap::new();
         
         for data_row in price_data_rows {
             let third_party_id = data_row.get(card_platform_id_key)
