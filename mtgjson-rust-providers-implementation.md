@@ -51,6 +51,21 @@ Successfully converted the `mtgjson5/providers` directory into a Rust crate with
    - Downloads Magic comprehensive rules from Wizards website
    - Methods: `get_magic_rules()`, regex-based URL extraction
 
+6. **GathererProvider** (`gatherer.rs`)
+   - Based on `mtgjson5/providers/gatherer.py`
+   - Downloads Gatherer mapping data from GitHub
+   - Methods: `get_cards()`, multiverse ID to card data mapping
+
+7. **MTGBanProvider** (`mtgban.rs`)
+   - Based on `mtgjson5/providers/mtgban.py`
+   - MTGJSON to Card Kingdom translation table from MTGBan API
+   - Methods: `get_mtgjson_to_card_kingdom()`, API key authentication
+
+8. **MultiverseBridgeProvider** (`multiversebridge.rs`)
+   - Based on `mtgjson5/providers/multiversebridge.py`
+   - CardSphere price data and Rosetta Stone mapping
+   - Methods: `get_rosetta_stone_cards()`, `get_rosetta_stone_sets()`, `generate_today_price_dict()`
+
 #### Previously Implemented Providers:
 - **ScryfallProvider** - Scryfall API integration with rate limiting
 - **CardKingdomProvider** - Card Kingdom price and product data
@@ -118,7 +133,7 @@ thiserror = "1.0"
 
 ### Completed:
 - ✅ Core infrastructure (AbstractProvider, BaseProvider, error types)
-- ✅ 9 fully implemented providers matching Python APIs
+- ✅ **12 fully implemented providers** matching Python APIs
 - ✅ Python bindings with PyO3
 - ✅ Comprehensive error handling
 - ✅ Async architecture
@@ -145,7 +160,10 @@ mtgjson-rust/src/providers/
 ├── cardkingdom.rs        # Card Kingdom provider  
 ├── cardmarket.rs         # CardMarket (MKM) provider
 ├── edhrec.rs             # EDHRec provider
+├── gatherer.rs           # Gatherer provider
+├── mtgban.rs             # MTGBan provider
 ├── mtgwiki.rs            # MTG Wiki provider
+├── multiversebridge.rs   # MultiverseBridge provider
 ├── scryfall/             # Scryfall provider with submodules
 ├── tcgplayer.rs          # TCGPlayer provider
 ├── whats_in_standard.rs  # WhatsInStandard provider
@@ -158,13 +176,36 @@ The Rust implementation maintains 100% API compatibility with the Python version
 
 ```python
 # Python usage remains identical
-from mtgjson_rust import EdhrecProviderCardRanks, CardMarketProvider
+from mtgjson_rust import (
+    EdhrecProviderCardRanks, CardMarketProvider, GathererProvider, 
+    MTGBanProvider, MultiverseBridgeProvider
+)
 
+# All providers work exactly like their Python counterparts
 edhrec = EdhrecProviderCardRanks()
 salt_rating = edhrec.get_salt_rating("Lightning Bolt")
 
 cardmarket = CardMarketProvider()
 set_id = cardmarket.get_set_id("Throne of Eldraine")
+
+gatherer = GathererProvider()
+cards = gatherer.get_cards("12345")
+
+mtgban = MTGBanProvider()
+translation_table = mtgban.get_mtgjson_to_card_kingdom()
+
+bridge = MultiverseBridgeProvider()
+rosetta_cards = bridge.get_rosetta_stone_cards()
 ```
 
 This implementation provides a drop-in replacement for the Python providers with significant performance improvements while maintaining full API compatibility.
+
+## Complete Provider Coverage
+
+The Rust implementation now includes **12 providers** covering all major MTGJson data sources:
+
+- **Price Providers**: CardMarket, CardSphere (MultiverseBridge), Card Kingdom, Card Hoarder, TCGPlayer
+- **Data Providers**: Scryfall, Gatherer, MTGBan (translation), EDHRec (community data)
+- **Metadata Providers**: WhatsInStandard (format legality), Wizards (rules), MTG Wiki (Secret Lair)
+
+This represents complete coverage of the MTGJson provider ecosystem with significant performance improvements.

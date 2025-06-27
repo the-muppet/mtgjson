@@ -91,12 +91,15 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Add output manager
     m.add_class::<OutputManager>()?;
     
-    // Add properly implemented providers
+    // Add all implemented providers
     m.add_class::<CardHoarderProvider>()?;
     m.add_class::<CardKingdomProvider>()?;
     m.add_class::<CardMarketProvider>()?;
     m.add_class::<EdhrecProviderCardRanks>()?;
+    m.add_class::<GathererProvider>()?;
+    m.add_class::<MTGBanProvider>()?;
     m.add_class::<MtgWikiProviderSecretLair>()?;
+    m.add_class::<MultiverseBridgeProvider>()?;
     m.add_class::<ScryfallProvider>()?;
     m.add_class::<TCGPlayerProvider>()?;
     m.add_class::<WhatsInStandardProvider>()?;
