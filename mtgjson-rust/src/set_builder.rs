@@ -1,15 +1,15 @@
 use crate::base::JsonObject;
-use crate::card::MtgjsonCard;
-use crate::deck::MtgjsonDeck;
-use crate::foreign_data::MtgjsonForeignData;
-use crate::game_formats::MtgjsonGameFormats;
-use crate::leadership_skills::MtgjsonLeadershipSkills;
-use crate::legalities::MtgjsonLegalities;
-use crate::meta::MtgjsonMeta;
-use crate::related_cards::MtgjsonRelatedCards;
-use crate::rulings::MtgjsonRuling;
-use crate::sealed_product::MtgjsonSealedProduct;
-use crate::set::MtgjsonSet;
+use crate::card::MtgjsonCardObject;
+use crate::deck::MtgjsonDeckObject;
+use crate::foreign_data::MtgjsonForeignDataObject;
+use crate::game_formats::MtgjsonGameFormatsObject;
+use crate::leadership_skills::MtgjsonLeadershipSkillsObject;
+use crate::legalities::MtgjsonLegalitiesObject;
+use crate::meta::MtgjsonMetaObject;
+use crate::related_cards::MtgjsonRelatedCardsObject;
+use crate::rulings::MtgjsonRulingObject;
+use crate::sealed_product::MtgjsonSealedProductObject;
+use crate::set::MtgjsonSetObject;
 use crate::translations::MtgjsonTranslations;
 
 use chrono::{DateTime, Utc};
@@ -88,7 +88,7 @@ pub fn parse_foreign(
     card_name: &str,
     card_number: &str,
     set_name: &str,
-) -> Vec<MtgjsonForeignData> {
+) -> Vec<MtgjsonForeignDataObject> {
     let card_foreign_entries = Vec::new();
     
     // Add information to get all languages
@@ -238,8 +238,8 @@ pub fn parse_printings(sf_prints_url: Option<&str>) -> Vec<String> {
 }
 
 /// Parse legalities from Scryfall format to MTGJSON format
-pub fn parse_legalities(sf_card_legalities: &HashMap<String, String>) -> MtgjsonLegalities {
-    let mut card_legalities = MtgjsonLegalities::new();
+pub fn parse_legalities(sf_card_legalities: &HashMap<String, String>) -> MtgjsonLegalitiesObject {
+    let mut card_legalities = MtgjsonLegalitiesObject::new();
     
     for (key, value) in sf_card_legalities {
         if value != "not_legal" {
@@ -265,7 +265,7 @@ pub fn parse_legalities(sf_card_legalities: &HashMap<String, String>) -> Mtgjson
 }
 
 /// Parse rulings from Scryfall URL
-pub fn parse_rulings(rulings_url: &str) -> Vec<MtgjsonRuling> {
+pub fn parse_rulings(rulings_url: &str) -> Vec<MtgjsonRulingObject> {
     let mtgjson_rules = Vec::new();
     
     // TODO: Implement actual Scryfall API call
@@ -295,7 +295,7 @@ pub fn add_uuid_placeholder(object_name: &str, is_token: bool, set_code: &str) -
 }
 
 /// Add leadership skills to a card
-pub fn add_leadership_skills(mtgjson_card: &mut MtgjsonCard) {
+pub fn add_leadership_skills(mtgjson_card: &mut MtgjsonCardObject) {
     let override_cards = vec!["Grist, the Hunger Tide"];
     
     let is_commander_legal = override_cards.contains(&mtgjson_card.name.as_str())
@@ -311,7 +311,7 @@ pub fn add_leadership_skills(mtgjson_card: &mut MtgjsonCard) {
     let is_brawl_legal = false; // Placeholder
     
     if is_commander_legal || is_oathbreaker_legal || is_brawl_legal {
-        mtgjson_card.leadership_skills = Some(MtgjsonLeadershipSkills {
+        mtgjson_card.leadership_skills = Some(MtgjsonLeadershipSkillsObject {
             brawl: is_brawl_legal,
             commander: is_commander_legal,
             oathbreaker: is_oathbreaker_legal,
@@ -320,8 +320,8 @@ pub fn add_leadership_skills(mtgjson_card: &mut MtgjsonCard) {
 }
 
 /// Build MTGJSON set from set code
-pub fn build_mtgjson_set(set_code: &str) -> Option<MtgjsonSet> {
-    let mut mtgjson_set = MtgjsonSet::new();
+pub fn build_mtgjson_set(set_code: &str) -> Option<MtgjsonSetObject> {
+    let mut mtgjson_set = MtgjsonSetObject::new();
     mtgjson_set.code = Some(set_code.to_uppercase());
     
     // Add basic functionality
@@ -345,7 +345,7 @@ fn capitalize_first_letter(s: &str) -> String {
 }
 
 /// Mark duel deck assignments for cards
-pub fn mark_duel_decks(set_code: &str, mtgjson_cards: &mut [MtgjsonCard]) {
+pub fn mark_duel_decks(set_code: &str, mtgjson_cards: &mut [MtgjsonCardObject]) {
     println!("Marking duel deck status for {}", set_code);
     
     if set_code.starts_with("DD") || set_code == "GS1" {
@@ -397,7 +397,7 @@ pub fn get_translation_data(mtgjson_set_name: &str) -> Option<HashMap<String, St
 }
 
 /// Add variations and alternative fields to cards within a set
-pub fn add_variations_and_alternative_fields(mtgjson_set: &mut MtgjsonSet) {
+pub fn add_variations_and_alternative_fields(mtgjson_set: &mut MtgjsonSetObject) {
     if let Some(ref code) = mtgjson_set.code {
         println!("Adding variations for {}", code);
         
@@ -472,7 +472,7 @@ pub fn add_variations_and_alternative_fields(mtgjson_set: &mut MtgjsonSet) {
 }
 
 /// Add other face IDs to all cards within a group
-pub fn add_other_face_ids(cards_to_act_on: &mut [MtgjsonCard]) {
+pub fn add_other_face_ids(cards_to_act_on: &mut [MtgjsonCardObject]) {
     if cards_to_act_on.is_empty() {
         return;
     }
@@ -536,7 +536,7 @@ pub fn add_other_face_ids(cards_to_act_on: &mut [MtgjsonCard]) {
 }
 
 /// Link same card with different details (foil/non-foil versions)
-pub fn link_same_card_different_details(mtgjson_set: &mut MtgjsonSet) {
+pub fn link_same_card_different_details(mtgjson_set: &mut MtgjsonSetObject) {
     if let Some(ref code) = mtgjson_set.code {
         println!("Linking multiple printings for {}", code);
         
@@ -576,7 +576,7 @@ pub fn build_base_mtgjson_cards(
     additional_cards: Option<Vec<HashMap<String, serde_json::Value>>>,
     is_token: bool,
     set_release_date: &str,
-) -> Vec<MtgjsonCard> {
+) -> Vec<MtgjsonCardObject> {
     println!("Building cards for {}", set_code);
     
     // TODO: Implement actual Scryfall API call
@@ -595,7 +595,7 @@ pub fn build_base_mtgjson_cards(
 }
 
 /// Add rebalanced to original linkage for Alchemy cards
-pub fn add_rebalanced_to_original_linkage(mtgjson_set: &mut MtgjsonSet) {
+pub fn add_rebalanced_to_original_linkage(mtgjson_set: &mut MtgjsonSetObject) {
     let mut rebalanced_pairs = Vec::new();
     
     // Check if cards have is_rebalanced field (simplified)
@@ -618,7 +618,7 @@ pub fn add_rebalanced_to_original_linkage(mtgjson_set: &mut MtgjsonSet) {
 }
 
 /// Relocate miscellaneous tokens from cards to tokens array
-pub fn relocate_miscellaneous_tokens(mtgjson_set: &mut MtgjsonSet) {
+pub fn relocate_miscellaneous_tokens(mtgjson_set: &mut MtgjsonSetObject) {
     if let Some(ref code) = mtgjson_set.code {
         println!("Relocate tokens for {}", code);
         
@@ -649,14 +649,14 @@ pub fn relocate_miscellaneous_tokens(mtgjson_set: &mut MtgjsonSet) {
 pub fn get_base_and_total_set_sizes(
     base_set_size: i32,
     total_set_size: i32,
-    mtgjson_set: &mut MtgjsonSet,
+    mtgjson_set: &mut MtgjsonSetObject,
 ) {
     mtgjson_set.base_set_size = Some(base_set_size);
     mtgjson_set.total_set_size = total_set_size;
 }
 
 /// Add starter card designation to cards not available in boosters
-pub fn add_is_starter_option(mtgjson_set: &mut MtgjsonSet) {
+pub fn add_is_starter_option(mtgjson_set: &mut MtgjsonSetObject) {
     let release_date = &mtgjson_set.release_date;
     if release_date.as_str() > "2019-10-01" {
         // Implementation here
@@ -664,7 +664,7 @@ pub fn add_is_starter_option(mtgjson_set: &mut MtgjsonSet) {
 }
 
 /// Build sealed products for a set
-pub fn build_sealed_products(set_code: &str) -> Vec<MtgjsonSealedProduct> {
+pub fn build_sealed_products(set_code: &str) -> Vec<MtgjsonSealedProductObject> {
     println!("Building sealed products for {}", set_code);
     
     let sealed_products = Vec::new();
@@ -680,7 +680,7 @@ pub fn build_sealed_products(set_code: &str) -> Vec<MtgjsonSealedProduct> {
 }
 
 /// Build decks for a set 
-pub fn build_decks(set_code: &str) -> Vec<MtgjsonDeck> {
+pub fn build_decks(set_code: &str) -> Vec<MtgjsonDeckObject> {
     println!("Building decks for {}", set_code);
     
     let decks = Vec::new();
@@ -696,7 +696,7 @@ pub fn build_decks(set_code: &str) -> Vec<MtgjsonDeck> {
 }
 
 /// Enhance cards with additional metadata
-pub fn enhance_cards_with_metadata(mtgjson_cards: &mut [MtgjsonCard]) {
+pub fn enhance_cards_with_metadata(mtgjson_cards: &mut [MtgjsonCardObject]) {
     println!("Enhancing cards with metadata");
     
     for card in mtgjson_cards.iter_mut() {
