@@ -4,7 +4,7 @@
 
 This analysis evaluates API parity between the Python mtgjson5 implementation and its Rust+PyO3 reimplementation. While the Rust implementation demonstrates excellent field coverage (90%+), several critical issues prevent 100% API compatibility.
 
-**Overall API Parity: ~55%** - **CRITICAL FAILURES** preventing production readiness.
+**Overall API Parity: ~75%** - Good progress with method naming issues remaining.
 
 ## Project Structure Overview
 
@@ -25,16 +25,16 @@ This analysis evaluates API parity between the Python mtgjson5 implementation an
 | **Method Coverage** | ~65% | ❌ Poor | Missing magic methods, wrong names |
 | **Signature Accuracy** | ~60% | ❌ Critical Issues | Wrong method names, return types |
 | **Type Compatibility** | ~80% | ⚠️ Good | Keyword conflicts |
-| **Module Registration** | ~30% | ❌ Critical Failure | **4 MAJOR MODULES MISSING** |
+| **Module Registration** | ~80% | ✅ Good | Only set_builder functions missing |
 
 ## Critical Breaking Issues
 
-### 1. ❌ MISSING HIGH-PERFORMANCE MODULES
-**Python modules NOT registered in Rust:**
-- ❌ `price_builder.py` → Implementation exists but NOT in `lib.rs` registration
-- ❌ `output_generator.py` → Implementation exists but NOT in `lib.rs` registration  
-- ❌ `parallel_call.py` → Implementation exists but NOT in `lib.rs` registration
-- ❌ `set_builder.py` → **COMPLETELY MISSING** from module registration
+### 1. ✅ HIGH-PERFORMANCE MODULES REGISTERED  
+**CORRECTION: All major modules ARE registered in Rust:**
+- ✅ `price_builder.py` → `PriceBuilder` registered in `lib.rs`
+- ✅ `output_generator.py` → `OutputGenerator` registered in `lib.rs`
+- ✅ `parallel_call.py` → `ParallelProcessor` & `ParallelIterator` registered
+- ⚠️ `set_builder.py` → Module imported but **functions not exposed as classes**
 
 ### 2. ❌ METHOD NAMING CONVENTION VIOLATIONS
 
@@ -69,10 +69,10 @@ This analysis evaluates API parity between the Python mtgjson5 implementation an
 | `card.rs` | 718 | ⚠️ Issues Found | Field naming, magic methods |
 | `mtgjson_identifiers.py` | 46 | ✅ Perfect | All 21 fields mapped |
 | `identifiers.rs` | 245 | ✅ Good | Comprehensive implementation |
-| `set_builder.rs` | 768 | ❌ Not Registered | **MISSING** from `lib.rs` |
-| `price_builder.rs` | 262 | ❌ Not Registered | **MISSING** from `lib.rs` |
-| `output_generator.rs` | 310 | ❌ Not Registered | **MISSING** from `lib.rs` |
-| `parallel_call.rs` | 354 | ❌ Not Registered | **MISSING** from `lib.rs` |
+| `set_builder.rs` | 768 | ⚠️ Partial | Functions exist but not as classes |
+| `price_builder.rs` | 262 | ✅ Registered | `PriceBuilder` class in `lib.rs` |
+| `output_generator.rs` | 310 | ✅ Registered | `OutputGenerator` class in `lib.rs` |
+| `parallel_call.rs` | 354 | ✅ Registered | Both classes in `lib.rs` |
 
 ## Constructor Compatibility ✅
 
@@ -82,11 +82,11 @@ This analysis evaluates API parity between the Python mtgjson5 implementation an
 
 ## Implementation Action Plan
 
-### Phase 1: **URGENT** Module Registration (1 day)
-- [ ] Register `PriceBuilder` in `lib.rs`
-- [ ] Register `OutputGenerator` in `lib.rs`  
-- [ ] Register `ParallelProcessor` in `lib.rs`
-- [ ] Register all `set_builder` functions in `lib.rs`
+### Phase 1: Set Builder Functions (1 day)
+- [x] ~~Register `PriceBuilder` in `lib.rs`~~ ✅ **ALREADY DONE**
+- [x] ~~Register `OutputGenerator` in `lib.rs`~~ ✅ **ALREADY DONE**
+- [x] ~~Register `ParallelProcessor` in `lib.rs`~~ ✅ **ALREADY DONE**
+- [ ] Expose `set_builder` functions as module-level functions
 
 ### Phase 2: Critical Method Fixes (2-3 days)
 - [ ] Fix method naming: `eq()` → `__eq__()`, `compare()` → `__lt__()`
@@ -104,20 +104,20 @@ This analysis evaluates API parity between the Python mtgjson5 implementation an
 - [ ] Performance benchmarking
 - [ ] Integration testing with existing Python code
 
-**Total Estimated Time: 8-11 days for 100% API parity**
+**Total Estimated Time: 6-8 days for 100% API parity**
 
 ## Recommendations
 
-1. **🚨 CRITICAL**: Register missing modules in `lib.rs` - **BLOCKS ALL FUNCTIONALITY**
-2. **🔥 URGENT**: Fix method naming violations - **BREAKS PYTHON COMPATIBILITY**  
-3. **⚠️ High Priority**: Implement missing magic methods - **API INCOMPATIBILITY**
+1. ** URGENT**: Fix method naming violations - **BREAKS PYTHON COMPATIBILITY**  
+2. **⚠️ High Priority**: Implement missing magic methods - **API INCOMPATIBILITY**
+3. **Medium Priority**: Expose set_builder functions properly
 4. **Medium Priority**: Implement comprehensive test suite
 5. **Long-term**: Performance optimization and monitoring
 
 ## Risk Assessment
 
-- **🚨 CRITICAL RISK**: **4 major modules completely missing** - Core functionality unusable
-- **🔥 HIGH RISK**: **Method naming violations** - Existing Python code will fail
+- ** HIGH RISK**: **Method naming violations** - Existing Python code will fail
+- **⚠️ MEDIUM RISK**: Missing set_builder function exposure
 - **⚠️ MEDIUM RISK**: Performance regression during transition
 - **LOW RISK**: Documentation and maintenance overhead
 
@@ -132,12 +132,16 @@ This analysis evaluates API parity between the Python mtgjson5 implementation an
 *Analysis Date: December 2024*  
 *Status: **CRITICAL FAILURES FOUND** - Major modules missing, method naming violations*
 
-## 🚨 IMMEDIATE ACTION REQUIRED
+## ⚠️ CORRECTION TO ANALYSIS
 
-The Rust implementation has **CRITICAL FAILURES** that must be addressed:
+**MAJOR ERROR IN INITIAL ASSESSMENT**: High-performance modules ARE properly registered!
 
-1. **4 Major Modules Missing from Registration**: `set_builder`, `price_builder`, `output_generator`, `parallel_call`
-2. **Method Naming Convention Violations**: Wrong Python method names break compatibility
-3. **API Compatibility**: Only ~55% compatible - far below production standards
+✅ **Actually Implemented & Registered**:
+- `PriceBuilder`, `OutputGenerator`, `ParallelProcessor`, `ParallelIterator` all in `lib.rs`
 
-**VERDICT**: Current Rust implementation is **NOT READY** for production use without significant fixes.
+❌ **Remaining Issues**:
+1. **Method Naming Convention Violations**: Wrong Python method names break compatibility  
+2. **Set Builder Functions**: Not exposed as module-level functions
+3. **API Compatibility**: ~75% compatible - much better than initially assessed
+
+**REVISED VERDICT**: Rust implementation is **MUCH CLOSER** to production ready than initially assessed.
