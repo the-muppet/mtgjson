@@ -832,3 +832,20 @@ pub enum ProcessingError {
     NetworkError(String),
     ValidationError(String),
 }
+
+#[derive(Debug, Clone)]
+pub struct ParallelTask {
+    pub id: String,
+    pub task_type: String,
+    pub data: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParallelResult {
+    pub task_id: String,
+    pub status: String,
+    pub data: String,
+    pub error: Option<String>,
+    pub processing_time: i64,
+}
