@@ -1786,6 +1786,14 @@ impl GitHubDecksProvider {
             return cached_decks.clone();
         }
 
+        // Ensure AllPrintings data is loaded for card lookups
+        if self.all_printings_cards.is_none() {
+            if let Err(e) = self.load_all_printings().await {
+                eprintln!("Failed to load AllPrintings data: {}", e);
+                // Continue with minimal card data if AllPrintings fails to load
+            }
+        }
+
         let mut decks = Vec::new();
 
         // Download deck UUID mappings
@@ -1883,17 +1891,56 @@ impl GitHubDecksProvider {
         let is_foil = card_json.get("foil").and_then(|v| v.as_bool()).unwrap_or(false);
         let mtgjson_uuid = card_json.get("mtgjson_uuid").and_then(|v| v.as_str())?;
 
-        // In the real implementation, this would look up the full card data from AllPrintings
-        // For now, create a minimal card entry
-        let card_entry = serde_json::json!({
-            "name": card_name,
-            "uuid": mtgjson_uuid,
-            "count": count,
-            "isFoil": is_foil,
-            "setCode": set_code.to_uppercase()
-        });
-
-        Some(card_entry.to_string())
+        // Look up the full card data from AllPrintings using the UUID
+        if let Some(full_card_data) = self.find_card_by_uuid(mtgjson_uuid) {
+            // Clone the full card data and add deck-specific fields
+            let mut card_entry = full_card_data.clone();
+            
+            // Add deck-specific fields from GitHub data
+            if let Some(card_obj) = card_entry.as_object_mut() {
+                card_obj.insert("count".to_string(), serde_json::json!(count));
+                card_obj.insert("isFoil".to_string(), serde_json::json!(is_foil));
+                
+                // Ensure the set code is uppercase
+                card_obj.insert("setCode".to_string(), serde_json::json!(set_code.to_uppercase()));
+                
+                // Add identifier for deck building
+                card_obj.insert("uuid".to_string(), serde_json::json!(mtgjson_uuid));
+                
+                return Some(card_entry.to_string());
+            }
+        } else {
+            // If we can't find the full card data, create a fallback minimal entry
+            eprintln!("Warning: Could not find full card data for UUID {} ({}), creating minimal entry", mtgjson_uuid, card_name);
+            
+            let card_entry = serde_json::json!({
+                "name": card_name,
+                "uuid": mtgjson_uuid,
+                "count": count,
+                "isFoil": is_foil,
+                "setCode": set_code.to_uppercase(),
+                "manaValue": 0,
+                "type": "Unknown",
+                "text": "",
+                "artist": "",
+                "rarity": "common",
+                "number": "0",
+                "colors": [],
+                "colorIdentity": [],
+                "keywords": [],
+                "layout": "normal",
+                "finishes": if is_foil { ["foil"] } else { ["nonfoil"] },
+                "identifiers": {},
+                "legalities": {},
+                "availability": {},
+                "prices": {},
+                "purchaseUrls": {}
+            });
+            
+            return Some(card_entry.to_string());
+        }
+        
+        None
     }
 
     /// Sanitize deck name for file output
@@ -1909,35 +1956,82 @@ impl GitHubDecksProvider {
         format!("{}_{}", set_code, sanitized)
     }
 
-    /// Load all printings data for card lookups (would be implemented to load actual AllPrintings.json)
+    /// Load all printings data for card lookups from AllPrintings.json
     async fn load_all_printings(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // In a real implementation, this would load the AllPrintings.json file
-        // For now, we'll create a minimal implementation
         println!("Loading AllPrintings data for card lookups...");
         
-        // This would normally load from ../outputs/AllPrintings.json
-        // let all_printings_path = Path::new("../outputs/AllPrintings.json");
-        // let content = fs::read_to_string(all_printings_path).await?;
-        // let data: serde_json::Value = serde_json::from_str(&content)?;
-        // self.all_printings_cards = Some(data.get("data").unwrap().as_object().unwrap().clone());
+        // Try multiple possible paths for AllPrintings.json
+        let possible_paths = vec![
+            "../outputs/AllPrintings.json",
+            "./outputs/AllPrintings.json", 
+            "./AllPrintings.json",
+            "../AllPrintings.json"
+        ];
         
-        // For now, create empty structure
-        self.all_printings_cards = Some(HashMap::new());
+        for path_str in possible_paths {
+            let path = Path::new(path_str);
+            if path.exists() {
+                println!("Found AllPrintings.json at: {}", path_str);
+                
+                // Read file asynchronously
+                let content = tokio::fs::read_to_string(path).await?;
+                let data: serde_json::Value = serde_json::from_str(&content)?;
+                
+                // Extract the data section which contains all sets
+                if let Some(data_obj) = data.get("data").and_then(|v| v.as_object()) {
+                    self.all_printings_cards = Some(data_obj.clone());
+                    println!("Successfully loaded AllPrintings data with {} sets", data_obj.len());
+                    return Ok(());
+                } else {
+                    return Err("AllPrintings.json does not have expected 'data' structure".into());
+                }
+            }
+        }
         
-        Ok(())
+        // If no AllPrintings.json found, try to download from MTGJSON API
+        println!("AllPrintings.json not found locally, attempting to download from MTGJSON API...");
+        
+        let response = self.client
+            .get("https://mtgjson.com/api/v5/AllPrintings.json")
+            .timeout(Duration::from_secs(300)) // 5 minute timeout for large file
+            .send()
+            .await?;
+            
+        if response.status().is_success() {
+            let data: serde_json::Value = response.json().await?;
+            
+            if let Some(data_obj) = data.get("data").and_then(|v| v.as_object()) {
+                self.all_printings_cards = Some(data_obj.clone());
+                println!("Successfully downloaded and loaded AllPrintings data with {} sets", data_obj.len());
+                return Ok(());
+            }
+        }
+        
+        return Err("Could not load AllPrintings data from file or API".into());
     }
 
     /// Find full card data by UUID from AllPrintings
     fn find_card_by_uuid(&self, uuid: &str) -> Option<serde_json::Value> {
-        // In real implementation, this would search through all sets in AllPrintings
-        // to find the card with matching UUID
         if let Some(ref all_printings) = self.all_printings_cards {
+            // Search through all sets in AllPrintings to find the card with matching UUID
             for (_set_code, set_data) in all_printings {
+                // Check regular cards
                 if let Some(cards) = set_data.get("cards").and_then(|v| v.as_array()) {
                     for card in cards {
                         if let Some(card_uuid) = card.get("uuid").and_then(|v| v.as_str()) {
                             if card_uuid == uuid {
                                 return Some(card.clone());
+                            }
+                        }
+                    }
+                }
+                
+                // Also check tokens if they exist in this set
+                if let Some(tokens) = set_data.get("tokens").and_then(|v| v.as_array()) {
+                    for token in tokens {
+                        if let Some(token_uuid) = token.get("uuid").and_then(|v| v.as_str()) {
+                            if token_uuid == uuid {
+                                return Some(token.clone());
                             }
                         }
                     }
