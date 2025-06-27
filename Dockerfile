@@ -1,8 +1,12 @@
-# Multi-stage build: Rust compilation stage
+# Global ARG declarations for use in FROM statements
 ARG RUST_VERSION=1.75
+ARG PYTHON_VERSION=3.11
+
+# Multi-stage build: Rust compilation stage
 FROM rust:${RUST_VERSION}-slim-buster as rust-builder
 
-# Build arguments
+# Re-declare ARGs for this stage
+ARG RUST_VERSION=1.75
 ARG MATURIN_VERSION=1.4.0
 ARG BUILD_MODE=release
 
@@ -49,10 +53,10 @@ FROM rust-builder as test
 RUN cargo test --release
 
 # Final stage: Python application
-ARG PYTHON_VERSION=3.11
 FROM python:${PYTHON_VERSION}-slim-buster as final
 
-# Build arguments for conditional features
+# Re-declare ARGs for this stage
+ARG PYTHON_VERSION=3.11
 ARG INSTALL_DEV_TOOLS=false
 ARG BUILD_MODE=release
 

@@ -53,7 +53,9 @@ target "rust-builder" {
   
   args = {
     RUST_VERSION = RUST_VERSION
+    PYTHON_VERSION = PYTHON_VERSION
     MATURIN_VERSION = MATURIN_VERSION
+    BUILD_MODE = "release"
   }
   
   cache-from = [
@@ -78,11 +80,14 @@ target "rust-builder" {
 target "mtgjson" {
   dockerfile = "Dockerfile"
   context = "."
+  target = "final"
   
   args = {
     RUST_VERSION = RUST_VERSION
     PYTHON_VERSION = PYTHON_VERSION
     MATURIN_VERSION = MATURIN_VERSION
+    BUILD_MODE = "release"
+    INSTALL_DEV_TOOLS = "false"
   }
   
   cache-from = [
@@ -112,6 +117,9 @@ target "mtgjson-dev" {
   inherits = ["mtgjson"]
   
   args = {
+    RUST_VERSION = RUST_VERSION
+    PYTHON_VERSION = PYTHON_VERSION
+    MATURIN_VERSION = MATURIN_VERSION
     BUILD_MODE = "debug"
     INSTALL_DEV_TOOLS = "true"
   }
@@ -137,6 +145,14 @@ target "local" {
   inherits = ["mtgjson"]
   platforms = []
   
+  args = {
+    RUST_VERSION = RUST_VERSION
+    PYTHON_VERSION = PYTHON_VERSION
+    MATURIN_VERSION = MATURIN_VERSION
+    BUILD_MODE = "release"
+    INSTALL_DEV_TOOLS = "false"
+  }
+  
   cache-from = [
     "type=gha,scope=local"
   ]
@@ -153,6 +169,14 @@ target "local" {
 // CI/CD optimized target
 target "ci" {
   inherits = ["mtgjson"]
+  
+  args = {
+    RUST_VERSION = RUST_VERSION
+    PYTHON_VERSION = PYTHON_VERSION
+    MATURIN_VERSION = MATURIN_VERSION
+    BUILD_MODE = "release"
+    INSTALL_DEV_TOOLS = "false"
+  }
   
   cache-from = [
     "type=gha,scope=ci",
@@ -172,8 +196,16 @@ target "ci" {
 
 // Testing target
 target "test" {
-  inherits = ["mtgjson-dev"]
+  dockerfile = "Dockerfile"
   target = "test"
+  context = "."
+  
+  args = {
+    RUST_VERSION = RUST_VERSION
+    PYTHON_VERSION = PYTHON_VERSION
+    MATURIN_VERSION = MATURIN_VERSION
+    BUILD_MODE = "release"
+  }
   
   cache-from = [
     "type=gha,scope=test"
