@@ -1,5 +1,5 @@
 use crate::base::{skip_if_empty_optional_string, JsonObject};
-use crate::identifiers::MtgjsonIdentifiers;
+use crate::identifiers::MtgjsonIdentifiersObject;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -17,7 +17,7 @@ pub struct MtgjsonForeignDataObject {
     pub multiverse_id: Option<i32>,
     
     #[pyo3(get, set)]
-    pub identifiers: MtgjsonIdentifiers,
+    pub identifiers: MtgjsonIdentifiersObject,
     
     #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
@@ -52,7 +52,7 @@ impl MtgjsonForeignDataObject {
             name: None,
             text: None,
             type_: None,
-            identifiers: MtgjsonIdentifiers::new(),
+            identifiers: MtgjsonIdentifiersObject::new(),
         }
     }
 

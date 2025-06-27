@@ -6,16 +6,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// MTGJSON AllIdentifiers Object
-/// Rust equivalent of MtgjsonAllIdentifiersObject
+/// Rust equivalent of MtgjsonAllIdentifiersObjectObject
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[pyclass(name = "MtgjsonAllIdentifiers")]
-pub struct MtgjsonAllIdentifiers {
+#[pyclass(name = "MtgjsonAllIdentifiersObject")]
+pub struct MtgjsonAllIdentifiersObject {
     #[pyo3(get, set)]
     pub all_identifiers_dict: HashMap<String, MtgjsonCardObject>,
 }
 
 #[pymethods]
-impl MtgjsonAllIdentifiers {
+impl MtgjsonAllIdentifiersObject {
     #[new]
     pub fn new() -> Self {
         Self {
@@ -196,7 +196,7 @@ impl MtgjsonAllIdentifiers {
     }
 
     /// Merge with another AllIdentifiers object
-    pub fn merge(&mut self, other: &MtgjsonAllIdentifiers) -> usize {
+    pub fn merge(&mut self, other: &MtgjsonAllIdentifiersObject) -> usize {
         let mut conflicts = 0;
         
         for (uuid, card) in &other.all_identifiers_dict {
@@ -212,13 +212,13 @@ impl MtgjsonAllIdentifiers {
     }
 }
 
-impl Default for MtgjsonAllIdentifiers {
+impl Default for MtgjsonAllIdentifiersObject {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl JsonObject for MtgjsonAllIdentifiers {}
+impl JsonObject for MtgjsonAllIdentifiersObject {}
 
 #[cfg(test)]
 mod tests {
@@ -234,14 +234,14 @@ mod tests {
 
     #[test]
     fn test_all_identifiers_creation() {
-        let all_identifiers = MtgjsonAllIdentifiers::new();
+        let all_identifiers = MtgjsonAllIdentifiersObject::new();
         assert_eq!(all_identifiers.card_count(), 0);
         assert!(all_identifiers.validate_unique_uuids());
     }
 
     #[test]
     fn test_add_cards() {
-        let mut all_identifiers = MtgjsonAllIdentifiers::new();
+        let mut all_identifiers = MtgjsonAllIdentifiersObject::new();
         let card1 = create_test_card("uuid1", "Test Card 1", "TST");
         let card2 = create_test_card("uuid2", "Test Card 2", "TST");
 
@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn test_find_cards() {
-        let mut all_identifiers = MtgjsonAllIdentifiers::new();
+        let mut all_identifiers = MtgjsonAllIdentifiersObject::new();
         let card1 = create_test_card("uuid1", "Lightning Bolt", "LEA");
         let card2 = create_test_card("uuid2", "Lightning Strike", "M19");
         
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn test_statistics() {
-        let mut all_identifiers = MtgjsonAllIdentifiers::new();
+        let mut all_identifiers = MtgjsonAllIdentifiersObject::new();
         let card1 = create_test_card("uuid1", "Card 1", "SET1");
         let mut token1 = create_test_card("uuid2", "Token 1", "SET1");
         token1.is_token = true;

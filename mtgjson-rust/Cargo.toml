@@ -1,28 +1,78 @@
 [package]
-name = "mtgjson-rust"
-version = "0.1.0"
+name = "mtgjson_rs"
+version = "0.1.5"
 edition = "2021"
-description = "Rust implementation of MTGJSON data structures with Python bindings"
+description = "MTGJSON - The Rust Edition"
 license = "MIT"
 
 [lib]
-name = "mtgjson_rust"
+name = "mtgjson_rs"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+# Bindings
+pyo3 = { version = "0.22", features = ["extension-module", "chrono"] }
+# Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-pyo3 = { version = "0.22", features = ["extension-module", "chrono"] }
+# Utils
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["serde", "v4"] }
 regex = "1.0"
+log = "0.4"
+env_logger = "0.11"
 thiserror = "1.0"
 indexmap = { version = "2.0", features = ["serde"] }
 
-# New dependencies for high-computational modules
+# Async runtime
 tokio = { version = "1.0", features = ["full"] }
 reqwest = { version = "0.11", features = ["json"] }
+futures = "0.3"
+async-trait = "0.1"
+
+# Performance|Parallelism
+rayon = "1.8"
+dashmap = "6.1"
+
+# Scraping
+scraper = "0.20"
+
+# Cryptography
 sha2 = "0.10"
+
 
 [dev-dependencies]
 anyhow = "1.0"
+
+
+# default Release+ profile
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 16
+panic = "unwind"
+strip = true
+
+
+# Max Performance profile | YMMV based on specs
+[profile.extreme]
+inherits = "release"
+# sacrifice compile time for runtime gains
+codegen-units = 1
+# Use abort for maximum performance
+panic = "abort"
+# Strip all symbols/debuginfo from binary
+strip = true
+# Disable runtime checks for maximum speed
+overflow-checks = false
+# Disable debug assertions for maximum performance
+debug-assertions = false
+
+
+# Elmo's on fire | Ultra performant/benchmarking profile
+[profile.Elmo]
+inherits = "extreme"
+# Disable incremental compilation for maximum performance
+incremental = false
+# Enable RPATH for dynamic linking
+rpath = true

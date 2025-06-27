@@ -5,8 +5,8 @@ use std::collections::{HashMap, HashSet};
 
 /// MTGJSON Singular Card.PurchaseURLs Object
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
-#[pyclass(name = "MtgjsonPurchaseUrls")]
-pub struct MtgjsonPurchaseUrls {
+#[pyclass(name = "MtgjsonPurchaseUrlsObject")]
+pub struct MtgjsonPurchaseUrlsObject {
     #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
     pub card_kingdom: Option<String>,
@@ -33,7 +33,7 @@ pub struct MtgjsonPurchaseUrls {
 }
 
 #[pymethods]
-impl MtgjsonPurchaseUrls {
+impl MtgjsonPurchaseUrlsObject {
     #[new]
     pub fn new() -> Self {
         Self::default()
@@ -133,7 +133,7 @@ impl MtgjsonPurchaseUrls {
     }
 }
 
-impl JsonObject for MtgjsonPurchaseUrls {
+impl JsonObject for MtgjsonPurchaseUrlsObject {
     fn build_keys_to_skip(&self) -> HashSet<String> {
         HashSet::new() // All empty values are handled by serde skip_serializing_if
     }

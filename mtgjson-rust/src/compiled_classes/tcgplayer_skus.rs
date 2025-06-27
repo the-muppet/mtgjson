@@ -5,14 +5,14 @@ use std::collections::HashMap;
 
 /// MTGJSON TcgplayerSkus Object
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[pyclass(name = "MtgjsonTcgplayerSkus")]
-pub struct MtgjsonTcgplayerSkus {
+#[pyclass(name = "MtgjsonTcgplayerSkusObject")]
+pub struct MtgjsonTcgplayerSkusObject {
     #[pyo3(get, set)]
     pub tcgplayer_skus: HashMap<String, Vec<HashMap<String, String>>>,
 }
 
 #[pymethods]
-impl MtgjsonTcgplayerSkus {
+impl MtgjsonTcgplayerSkusObject {
     #[new]
     #[pyo3(signature = (_all_printings_path=None))]
     pub fn new(_all_printings_path: Option<std::path::PathBuf>) -> Self {
@@ -22,10 +22,10 @@ impl MtgjsonTcgplayerSkus {
     }
 }
 
-impl Default for MtgjsonTcgplayerSkus {
+impl Default for MtgjsonTcgplayerSkusObject {
     fn default() -> Self {
         Self::new(None)
     }
 }
 
-impl JsonObject for MtgjsonTcgplayerSkus {}
+impl JsonObject for MtgjsonTcgplayerSkusObject {}

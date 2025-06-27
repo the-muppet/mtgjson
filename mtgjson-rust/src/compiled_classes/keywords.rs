@@ -3,10 +3,10 @@ use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// MTGJSON Keywords Object
-/// Rust equivalent of MtgjsonKeywordsObject
+/// Rust equivalent of MtgjsonKeywordsObjectObject
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[pyclass(name = "MtgjsonKeywords")]
-pub struct MtgjsonKeywords {
+#[pyclass(name = "MtgjsonKeywordsObject")]
+pub struct MtgjsonKeywordsObject {
     #[pyo3(get, set)]
     pub ability_words: Vec<String>,
     
@@ -18,7 +18,7 @@ pub struct MtgjsonKeywords {
 }
 
 #[pymethods]
-impl MtgjsonKeywords {
+impl MtgjsonKeywordsObject {
     #[new]
     pub fn new() -> Self {
         Self {
@@ -254,13 +254,13 @@ impl MtgjsonKeywords {
     }
 }
 
-impl Default for MtgjsonKeywords {
+impl Default for MtgjsonKeywordsObject {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl JsonObject for MtgjsonKeywords {}
+impl JsonObject for MtgjsonKeywordsObject {}
 
 #[cfg(test)]
 mod tests {
@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn test_keywords_creation() {
-        let keywords = MtgjsonKeywords::new();
+        let keywords = MtgjsonKeywordsObject::new();
         assert!(!keywords.ability_words.is_empty());
         assert!(!keywords.keyword_actions.is_empty());
         assert!(!keywords.keyword_abilities.is_empty());
@@ -276,7 +276,7 @@ mod tests {
 
     #[test]
     fn test_add_keywords() {
-        let mut keywords = MtgjsonKeywords::new();
+        let mut keywords = MtgjsonKeywordsObject::new();
         
         let initial_ability_count = keywords.ability_words.len();
         keywords.add_ability_word("Test Ability".to_string());
@@ -286,14 +286,14 @@ mod tests {
 
     #[test]
     fn test_search_keywords() {
-        let keywords = MtgjsonKeywords::new();
+        let keywords = MtgjsonKeywordsObject::new();
         let flying_results = keywords.search_keywords("fly");
         assert!(flying_results.contains(&"Flying".to_string()));
     }
 
     #[test]
     fn test_keyword_checks() {
-        let keywords = MtgjsonKeywords::new();
+        let keywords = MtgjsonKeywordsObject::new();
         assert!(keywords.is_keyword_ability("Flying"));
         assert!(keywords.is_keyword_action("Scry"));
         assert!(keywords.is_ability_word("Landfall"));
@@ -305,7 +305,7 @@ mod tests {
         let actions = vec!["Test Action".to_string()];
         let ability_words = vec!["Test Word".to_string()];
         
-        let keywords = MtgjsonKeywords::from_lists(ability_words, actions, abilities);
+        let keywords = MtgjsonKeywordsObject::from_lists(ability_words, actions, abilities);
         assert_eq!(keywords.ability_words.len(), 1);
         assert_eq!(keywords.keyword_actions.len(), 1);
         assert_eq!(keywords.keyword_abilities.len(), 1);

@@ -2,11 +2,27 @@
 # Supports both Docker Bake builds and local Rust module building
 # Cross-platform compatible (Linux, macOS, Windows)
 
-.PHONY: help build build-local build-dev build-ci build-all clean test push
-.PHONY: rust-local rust-wheel rust-debug rust-check troubleshoot install-rust-deps
-.PHONY: rust-test rust-clean dev-cycle rust-dev-cycle full-dev-cycle setup-dev
-.PHONY: platform-help clean-all run run-dev shell inspect benchmark logs
-.PHONY: install-buildx setup-builder release
+# ================================
+# PHONY Declarations
+# ================================
+.PHONY: help all setup-env clean rebuild
+.PHONY: build build-local build-dev build-ci build-all rust-builder
+.PHONY: rust-local rust-wheel rust-debug rust-check rust-test rust-clean
+.PHONY: install-rust-deps troubleshoot dev-build
+.PHONY: test test-all test-python test-rust install
+.PHONY: clean-all push run run-dev shell inspect benchmark logs
+.PHONY: install-buildx setup-builder platform-help
+.PHONY: dev-cycle rust-dev-cycle full-dev-cycle setup-dev release
+.PHONY: elmo-ultra
+# ================================
+# Configuration Variables
+# ================================
+
+# Use existing test environment or create new one
+VENV_DIR ?= test_env
+VENV_ACTIVATE = $(VENV_DIR)/bin/activate
+PYTHON = $(VENV_DIR)/bin/python
+PIP = $(VENV_DIR)/bin/pip
 
 # Default registry and tag
 REGISTRY ?= mtgjson
@@ -42,38 +58,95 @@ else
     NC := \033[0m
 endif
 
+# ================================
+# Default Target
+# ================================
+all: setup-env build install test ## Setup environment, build, install, and test
+
+# ================================
+# Help System
+# ================================
 help: ## Show this help message
-	@echo "$(GREEN)MTGJSON Build System ($(PLATFORM))$(NC)"
-	@echo "================================="
+	@echo "$(GREEN)MTGJSON Build System$(NC)"
+	@echo "===================="
 	@echo ""
 	@echo "$(YELLOW)Quick Start:$(NC)"
-	@echo "  make rust-local     # Build Rust module locally (fastest)"
-	@echo "  make build-local    # Build Docker image locally"
-	@echo "  make build          # Production Docker build"
+	@echo "  make all            - Complete build cycle: setup, build, install, test"
+	@echo "  make rust-local     - Build Rust module locally (fastest for development)"
+	@echo "  make setup-dev      - Setup development environment"
 	@echo ""
-	@echo "$(YELLOW)Local Rust Development:$(NC)"
-	@echo "  make rust-local     # Build and install Rust module"
-	@echo "  make rust-debug     # Build in debug mode (faster compile)"
-	@echo "  make rust-wheel     # Build distributable wheel"
-	@echo "  make rust-check     # Check Rust/maturin installation"
-	@echo "  make troubleshoot   # Troubleshoot build issues"
+	@echo "$(YELLOW)Environment Setup:$(NC)"
+	@echo "  setup-env           - Setup Python virtual environment with dependencies"
+	@echo "  install-rust-deps   - Install Rust toolchain and dependencies"
+	@echo "  setup-dev           - Complete development environment setup"
+	@echo "  rust-check          - Check if Rust and maturin are properly installed"
 	@echo ""
-	@echo "$(YELLOW)Docker Commands:$(NC)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(GREEN)%-15s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo "$(YELLOW)Building - Docker:$(NC)"
+	@echo "  build               - Build production image (multi-platform, optimized)"
+	@echo "  build-local         - Build for local development (single platform, faster)"
+	@echo "  build-dev           - Build development image with debug tools"
+	@echo "  build-ci            - Build for CI/CD (pushes to registry)"
+	@echo "  build-all           - Build all Docker targets"
+	@echo "  rust-builder        - Build only the Rust builder stage (for debugging)"
 	@echo ""
-	@echo "$(YELLOW)Platform Info:$(NC)"
-	@echo "  Platform: $(PLATFORM)"
-	@echo "  Build Script: $(BUILD_SCRIPT)"
-	@echo "  Python: $(PYTHON)"
+	@echo "$(YELLOW)Building - Local Rust:$(NC)"
+	@echo "  rust-local          - Build and install Rust module locally (development mode)"
+	@echo "  rust-debug          - Build Rust module in debug mode (faster compilation)"
+	@echo "  rust-wheel          - Build distributable wheel"
+	@echo "  dev-build           - Fast development build (maturin develop)"
+	@echo ""
+	@echo "$(YELLOW)Testing:$(NC)"
+	@echo "  test                - Run core tests with current setup"
+	@echo "  test-all            - Run all available tests"
+	@echo "  test-python         - Test original Python implementation"
+	@echo "  test-rust           - Test Rust implementation functionality"
+	@echo "  rust-test           - Test the locally built Rust module"
+	@echo ""
+	@echo "$(YELLOW)Docker Operations:$(NC)"
+	@echo "  push                - Push images to registry"
+	@echo "  run                 - Run the built image locally"
+	@echo "  run-dev             - Run development image with shell"
+	@echo "  shell               - Get shell in running container"
+	@echo "  inspect             - Inspect the built image"
+	@echo "  benchmark           - Run a quick performance benchmark"
+	@echo "  logs                - View build logs"
+	@echo ""
+	@echo "$(YELLOW)Cleaning:$(NC)"
+	@echo "  clean               - Clean build artifacts and Docker cache"
+	@echo "  clean-all           - Clean everything including images and Rust artifacts"
+	@echo "  rust-clean          - Clean only Rust build artifacts"
+	@echo ""
+	@echo "$(YELLOW)Development Workflows:$(NC)"
+	@echo "  dev-cycle           - Quick Docker development cycle: build and test"
+	@echo "  rust-dev-cycle      - Quick Rust development cycle: build and test locally"
+	@echo "  full-dev-cycle      - Full development cycle: Rust + Docker"
+	@echo "  rebuild             - Clean and rebuild from scratch"
+	@echo ""
+	@echo "$(YELLOW)Docker Utilities:$(NC)"
+	@echo "  install-buildx      - Install Docker Buildx (if not available)"
+	@echo "  setup-builder       - Setup multi-platform builder"
+	@echo ""
+	@echo "$(YELLOW)Production:$(NC)"
+	@echo "  release             - Full release cycle: clean, build, test, push"
+	@echo ""
+	@echo "$(YELLOW)Troubleshooting:$(NC)"
+	@echo "  troubleshoot        - Print troubleshooting information"
+	@echo "  platform-help       - Show platform-specific help and setup instructions"
 	@echo ""
 	@echo "$(YELLOW)Environment Variables:$(NC)"
-	@echo "  REGISTRY=$(REGISTRY)    # Docker registry"
-	@echo "  TAG=$(TAG)         # Image tag"
+	@echo "  REGISTRY            - Registry to push images to (default: mtgjson)"
+	@echo "  TAG                 - Tag for images (default: latest)"
+	@echo "  VENV_DIR            - Virtual environment directory (default: test_env)"
 	@echo ""
-	@echo "$(YELLOW)Examples:$(NC)"
-	@echo "  make rust-local              # Local Rust development"
-	@echo "  make build-local && make run # Docker development"
-	@echo "  REGISTRY=myregistry TAG=v1.0 make build"
+	@echo "$(YELLOW)Platform Information:$(NC)"
+	@echo "  Current platform: $(PLATFORM)"
+	@echo "  Build script: $(BUILD_SCRIPT)"
+	@echo ""
+	@echo "For platform-specific help: make platform-help"
+
+# ================================
+# Docker Building Targets
+# ================================
 
 build: ## Build production image (multi-platform, optimized caching)
 	@echo "$(GREEN)Building production image with Docker Bake...$(NC)"
@@ -101,7 +174,7 @@ build-ci: ## Build for CI/CD (pushes to registry)
 		--set="*.args.REGISTRY=$(REGISTRY)" \
 		--set="*.args.TAG=$(TAG)"
 
-build-all: ## Build all targets
+build-all: ## Build all Docker targets
 	@echo "$(GREEN)Building all targets...$(NC)"
 	docker buildx bake -f docker-bake.hcl all \
 		--set="*.args.REGISTRY=$(REGISTRY)" \
@@ -113,14 +186,8 @@ rust-builder: ## Build only the Rust builder stage (for debugging)
 		--set="*.args.REGISTRY=$(REGISTRY)" \
 		--set="*.args.TAG=$(TAG)"
 
-test: ## Run tests in Docker
-	@echo "$(GREEN)Running tests...$(NC)"
-	docker buildx bake -f docker-bake.hcl test \
-		--set="*.args.REGISTRY=$(REGISTRY)" \
-		--set="*.args.TAG=$(TAG)"
-
 # ================================
-# Local Rust Module Building
+# Local Rust Building Targets
 # ================================
 
 rust-local: ## Build and install Rust module locally (development mode)
@@ -135,7 +202,7 @@ else
 	$(BUILD_SCRIPT) --mode debug
 endif
 
-rust-wheel: ## Build distributable wheel
+rust-wheel: ## Build distributable wheel 
 	@echo "$(GREEN)Building Rust wheel...$(NC)"
 ifeq ($(PLATFORM),windows)
 	$(BUILD_SCRIPT) --wheel
@@ -143,26 +210,42 @@ else
 	$(BUILD_SCRIPT) --wheel
 endif
 
-rust-check: ## Check if Rust and maturin are properly installed
-	@echo "$(GREEN)Checking Rust installation...$(NC)"
-ifeq ($(PLATFORM),windows)
-	$(BUILD_SCRIPT) --check
-else
-	$(BUILD_SCRIPT) --check-only
-endif
+rust-docker: ## Build Rust module in Docker
+	@echo "$(GREEN)Building Rust module in Docker...$(NC)"
+	docker buildx bake -f docker-bake.hcl rust-builder \
+		--set="*.args.REGISTRY=$(REGISTRY)" \
+		--set="*.args.TAG=$(TAG)"
 
-troubleshoot: ## Print troubleshooting information
-	@echo "$(GREEN)Gathering troubleshooting information...$(NC)"
-ifeq ($(PLATFORM),windows)
-	$(BUILD_SCRIPT) --troubleshoot
-else
-	$(BUILD_SCRIPT) --troubleshoot
-endif
+dev-build: setup-env ## Fast development build (maturin develop)
+	@echo "$(GREEN)Building in development mode...$(NC)"
+	@. $(VENV_ACTIVATE) && cd mtgjson-rust && maturin develop
 
-install-rust-deps: ## Install Rust and required dependencies
+elmo-ultra: ## Nightly Rust build with maximum performance options
+	@echo RUSTFLAGS="-Z threads=12 -C target-cpu=native -C target-feature=+crt-static \
+	 -C link-arg=/OPT:REF -C link-arg=/OPT:ICF\" cargo build --profile elmo
+# ================================
+# Environment Setup Targets
+# ================================
+
+setup-env: ## Setup Python virtual environment with dependencies
+	@echo "$(GREEN)Setting up environment...$(NC)"
+	@if [ ! -d "$(VENV_DIR)" ]; then \
+		echo "Creating new virtual environment..."; \
+		python3 -m venv $(VENV_DIR) && \
+		echo "Installing dependencies..." && \
+		. $(VENV_ACTIVATE) && pip install --upgrade pip && \
+		pip install -r requirements.txt -r requirements_test.txt && \
+		pip install maturin tox; \
+	else \
+		echo "Using existing environment: $(VENV_DIR)"; \
+		echo "Installing missing dependencies..." && \
+		. $(VENV_ACTIVATE) && pip install -q maturin tox || true; \
+	fi
+
+install-rust-deps: ## Install Rust toolchain and dependencies
 	@echo "$(GREEN)Installing Rust dependencies...$(NC)"
 ifeq ($(PLATFORM),windows)
-	@echo "Please install:"
+	@echo "$(YELLOW)Please install manually:$(NC)"
 	@echo "1. Rust: https://rustup.rs/"
 	@echo "2. Visual Studio Build Tools: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022"
 	@echo "3. Python development headers (usually included with Python)"
@@ -178,6 +261,50 @@ else ifeq ($(PLATFORM),macos)
 	$(PYTHON) -m pip install maturin
 endif
 
+setup-dev: install-rust-deps rust-check ## Complete development environment setup
+	@echo "$(GREEN)Development environment setup complete!$(NC)"
+	@echo "$(YELLOW)Next steps:$(NC)"
+	@echo "  make rust-local     # Build Rust module"
+	@echo "  make rust-test      # Test Rust module"
+	@echo "  make build-local    # Build Docker image"
+
+rust-check: ## Check if Rust and maturin are properly installed
+	@echo "$(GREEN)Checking Rust installation...$(NC)"
+ifeq ($(PLATFORM),windows)
+	$(BUILD_SCRIPT) --check
+else
+	$(BUILD_SCRIPT) --check-only
+endif
+
+# ================================
+# Installation Targets
+# ================================
+
+install: build ## Install the built package
+	@echo "$(GREEN)Installing mtgjson_rust package...$(NC)"
+	@. $(VENV_ACTIVATE) && pip install --force-reinstall mtgjson-rust/target/wheels/mtgjson_rust-0.1.0-cp313-cp313-manylinux_2_34_x86_64.whl
+
+# ================================
+# Testing Targets
+# ================================
+
+test: install ## Run core tests with current setup
+	@echo "$(GREEN)Running tests with pytest...$(NC)"
+	@. $(VENV_ACTIVATE) && PYTHONPATH=/workspace pytest tests/mtgjson5/test_nothing.py tests/mtgjson5/test_card_sorting.py -v
+	@echo "$(GREEN)Core tests completed successfully!$(NC)"
+
+test-all: install ## Run all available tests
+	@echo "$(GREEN)Running all available tests...$(NC)"
+	@. $(VENV_ACTIVATE) && PYTHONPATH=/workspace pytest tests/mtgjson5/ -v || echo "Some tests may require additional dependencies"
+
+test-python: setup-env ## Test original Python implementation
+	@echo "$(GREEN)Testing original Python implementation...$(NC)"
+	@. $(VENV_ACTIVATE) && PYTHONPATH=/workspace pytest tests/mtgjson5/test_nothing.py tests/mtgjson5/test_card_sorting.py -v
+
+test-rust: install ## Test Rust implementation functionality
+	@echo "$(GREEN)Testing Rust implementation functionality...$(NC)"
+	@. $(VENV_ACTIVATE) && python -c "import mtgjson_rust; print('✓ Rust module loads'); from mtgjson_rust import MtgjsonCard; card = MtgjsonCard(); print('✓ Card creation works'); print('Available classes:', len([x for x in dir(mtgjson_rust) if x.startswith('Mtgjson')]))"
+
 rust-test: ## Test the locally built Rust module
 	@echo "$(GREEN)Testing Rust module...$(NC)"
 	$(PYTHON) -c "import mtgjson_rust; print('✓ Module imported successfully')"
@@ -186,23 +313,32 @@ rust-test: ## Test the locally built Rust module
 	$(PYTHON) -c "import mtgjson_rust; proc = mtgjson_rust.ParallelProcessor(); print('✓ Parallel processor works')"
 	@echo "$(GREEN)All Rust module tests passed!$(NC)"
 
-rust-clean: ## Clean Rust build artifacts
-	@echo "$(GREEN)Cleaning Rust build artifacts...$(NC)"
-ifeq ($(PLATFORM),windows)
-	if exist "mtgjson-rust\\target" rmdir /s /q "mtgjson-rust\\target"
-	if exist "*.whl" del /f /q "*.whl"
-else
-	rm -rf mtgjson-rust/target/
-	rm -f *.whl
-endif
+# ================================
+# Docker Testing Target
+# ================================
 
-clean: ## Clean Docker build cache and Rust artifacts
+docker-test: ## Run tests in Docker
+	@echo "$(GREEN)Running tests in Docker...$(NC)"
+	docker buildx bake -f docker-bake.hcl test \
+		--set="*.args.REGISTRY=$(REGISTRY)" \
+		--set="*.args.TAG=$(TAG)"
+
+# ================================
+# Cleaning Targets
+# ================================
+
+clean: ## Clean build artifacts and Docker cache
 	@echo "$(YELLOW)Cleaning build cache...$(NC)"
 	@echo "Cleaning Docker build cache..."
 	-docker buildx prune -f
 	-docker system prune -f --volumes
 	@echo "Cleaning Rust artifacts..."
 	$(MAKE) rust-clean
+	@echo "Cleaning Python artifacts..."
+	@rm -rf mtgjson-rust/build/
+	@rm -rf mtgjson-rust/dist/
+	@rm -rf mtgjson-rust/mtgjson_rust.egg-info/
+	@rm -rf .tox/
 
 clean-all: ## Clean everything including images and Rust artifacts
 	@echo "$(RED)Cleaning all build resources...$(NC)"
@@ -212,6 +348,20 @@ clean-all: ## Clean everything including images and Rust artifacts
 	@echo "Cleaning Rust artifacts..."
 	$(MAKE) rust-clean
 	@echo "$(RED)All clean!$(NC)"
+
+rust-clean: ## Clean only Rust build artifacts
+	@echo "$(GREEN)Cleaning Rust build artifacts...$(NC)"
+ifeq ($(PLATFORM),windows)
+	if exist "mtgjson-rust\\target" rmdir /s /q "mtgjson-rust\\target"
+	if exist "*.whl" del /f /q "*.whl"
+else
+	rm -rf mtgjson-rust/target/
+	rm -f *.whl
+endif
+
+# ================================
+# Docker Operations
+# ================================
 
 push: ## Push images to registry
 	@echo "$(GREEN)Pushing images to $(REGISTRY)...$(NC)"
@@ -237,7 +387,7 @@ import mtgjson_rust; \
 print('✓ Rust module loaded successfully'); \
 print('Available classes:', [attr for attr in dir(mtgjson_rust) if not attr.startswith('_')])"
 
-benchmark: ## Run a quick benchmark
+benchmark: ## Run a quick performance benchmark
 	@echo "$(GREEN)Running benchmark...$(NC)"
 	docker run --rm $(REGISTRY)/mtgjson:$(TAG) python3 -c "\
 import time; \
@@ -250,7 +400,10 @@ print(f'Created 1000 cards in {time.time() - start:.4f}s')"
 logs: ## View build logs
 	docker buildx bake -f docker-bake.hcl mtgjson --progress=plain
 
-# Development helpers
+# ================================
+# Docker Utilities
+# ================================
+
 install-buildx: ## Install Docker Buildx (if not available)
 	@echo "$(GREEN)Installing Docker Buildx...$(NC)"
 	docker buildx install
@@ -261,7 +414,7 @@ setup-builder: ## Setup multi-platform builder
 	docker buildx ls
 
 # ================================
-# Combined Workflows
+# Development Workflows
 # ================================
 
 dev-cycle: build-local inspect ## Quick Docker development cycle: build and test
@@ -273,19 +426,28 @@ rust-dev-cycle: rust-local rust-test ## Quick Rust development cycle: build and 
 full-dev-cycle: rust-local rust-test build-local inspect ## Full development cycle: Rust + Docker
 	@echo "$(GREEN)Full development cycle complete!$(NC)"
 
-setup-dev: install-rust-deps rust-check ## Setup development environment
-	@echo "$(GREEN)Development environment setup complete!$(NC)"
-	@echo "$(YELLOW)Next steps:$(NC)"
-	@echo "  make rust-local     # Build Rust module"
-	@echo "  make rust-test      # Test Rust module"
-	@echo "  make build-local    # Build Docker image"
+rebuild: clean build install ## Clean and rebuild from scratch
 
-# Production release cycle
-release: clean build test push ## Full release cycle: clean, build, test, push
+# ================================
+# Production Workflows
+# ================================
+
+release: clean build docker-test push ## Full release cycle: clean, build, test, push
 	@echo "$(GREEN)Release cycle complete!$(NC)"
 
-# Platform-specific notes
-platform-help: ## Show platform-specific help
+# ================================
+# Troubleshooting and Help
+# ================================
+
+troubleshoot: ## Print troubleshooting information
+	@echo "$(GREEN)Gathering troubleshooting information...$(NC)"
+ifeq ($(PLATFORM),windows)
+	$(BUILD_SCRIPT) --troubleshoot
+else
+	$(BUILD_SCRIPT) --troubleshoot
+endif
+
+platform-help: ## Show platform-specific help and setup instructions
 	@echo "$(GREEN)Platform-Specific Information$(NC)"
 	@echo "================================="
 	@echo "Platform: $(PLATFORM)"

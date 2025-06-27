@@ -1,25 +1,72 @@
 use crate::base::JsonObject;
 use pyo3::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Deserializer};
+use serde::de::{self, Visitor};
 use std::collections::HashSet;
+
+/// Custom deserializer that handles both boolean and string values
+fn deserialize_bool_or_string<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct BoolOrStringVisitor;
+
+    impl<'de> Visitor<'de> for BoolOrStringVisitor {
+        type Value = bool;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a boolean or a string")
+        }
+
+        fn visit_bool<E>(self, value: bool) -> Result<bool, E>
+        where
+            E: de::Error,
+        {
+            Ok(value)
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<bool, E>
+        where
+            E: de::Error,
+        {
+            // If it's a string like "mtgo", "paper", "arena", treat as true
+            // Empty string or null-like values are false
+            Ok(!value.is_empty() && value != "null" && value != "false")
+        }
+
+        fn visit_string<E>(self, value: String) -> Result<bool, E>
+        where
+            E: de::Error,
+        {
+            self.visit_str(&value)
+        }
+    }
+
+    deserializer.deserialize_any(BoolOrStringVisitor)
+}
 
 /// MTGJSON Singular Card.GameFormats Object
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[pyclass(name = "MtgjsonGameFormatsObject")]
 pub struct MtgjsonGameFormatsObject {
     #[pyo3(get, set)]
+    #[serde(deserialize_with = "deserialize_bool_or_string")]
     pub paper: bool,
     
     #[pyo3(get, set)]
+    #[serde(deserialize_with = "deserialize_bool_or_string")]
     pub mtgo: bool,
     
     #[pyo3(get, set)]
+    #[serde(deserialize_with = "deserialize_bool_or_string")]
     pub arena: bool,
     
     #[pyo3(get, set)]
+    #[serde(deserialize_with = "deserialize_bool_or_string")]
     pub shandalar: bool,
     
     #[pyo3(get, set)]
+    #[serde(deserialize_with = "deserialize_bool_or_string")]
     pub dreamcast: bool,
 }
 

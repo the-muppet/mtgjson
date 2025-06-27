@@ -1,4 +1,5 @@
 use crate::base::JsonObject;
+use crate::classes::{MtgjsonIdentifiersObject, MtgjsonPurchaseUrlsObject};
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -267,7 +268,7 @@ pub struct MtgjsonSealedProductObject {
 
     #[pyo3(get, set)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub identifiers: Option<crate::identifiers::MtgjsonIdentifiers>,
+    pub identifiers: Option<MtgjsonIdentifiersObject>,
 
     #[pyo3(get, set)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -275,11 +276,11 @@ pub struct MtgjsonSealedProductObject {
 
     #[pyo3(get, set)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub purchase_urls: Option<crate::purchase_urls::MtgjsonPurchaseUrls>,
+    pub purchase_urls: Option<MtgjsonPurchaseUrlsObject>,
 
     #[pyo3(get, set)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub raw_purchase_urls: Option<crate::purchase_urls::MtgjsonPurchaseUrls>,
+    pub raw_purchase_urls: Option<MtgjsonPurchaseUrlsObject>,
 
     #[pyo3(get, set)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -292,7 +293,7 @@ pub struct MtgjsonSealedProductObject {
     // Change to JSON string for PyO3 compatibility
     #[pyo3(get, set)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub contents: Option<String>, // JSON string instead of HashMap<String, serde_json::Value>
+    pub contents: Option<String>,
 }
 
 #[pymethods]
@@ -303,10 +304,10 @@ impl MtgjsonSealedProductObject {
             category: None,
             subtype: None,
             // Initialize like Python: identifiers, purchase_urls, raw_purchase_urls are initialized
-            identifiers: Some(crate::identifiers::MtgjsonIdentifiers::new()),
+            identifiers: Some(MtgjsonIdentifiersObject::new()),
             name: None,
-            purchase_urls: Some(crate::purchase_urls::MtgjsonPurchaseUrls::new()),
-            raw_purchase_urls: Some(crate::purchase_urls::MtgjsonPurchaseUrls::new()),
+            purchase_urls: Some(MtgjsonPurchaseUrlsObject::new()),
+            raw_purchase_urls: Some(MtgjsonPurchaseUrlsObject::new()),
             release_date: None,
             uuid: None,
             contents: None,

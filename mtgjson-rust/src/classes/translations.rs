@@ -5,8 +5,8 @@ use std::collections::{HashMap, HashSet};
 
 /// MTGJSON Set.Translations Object
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
-#[pyclass(name = "MtgjsonTranslations")]
-pub struct MtgjsonTranslations {
+#[pyclass(name = "MtgjsonTranslationsObject")]
+pub struct MtgjsonTranslationsObject {
     #[serde(skip_serializing_if = "skip_if_empty_optional_string")]
     #[pyo3(get, set)]
     pub chinese_simplified: Option<String>,
@@ -49,7 +49,7 @@ pub struct MtgjsonTranslations {
 }
 
 #[pymethods]
-impl MtgjsonTranslations {
+impl MtgjsonTranslationsObject {
     #[new]
     #[pyo3(signature = (active_dict = None))]
     pub fn new(active_dict: Option<HashMap<String, String>>) -> Self {
@@ -183,4 +183,4 @@ impl MtgjsonTranslations {
     }
 }
 
-impl JsonObject for MtgjsonTranslations {}
+impl JsonObject for MtgjsonTranslationsObject {}

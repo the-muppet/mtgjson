@@ -12,14 +12,14 @@ pub mod set_list;
 pub mod tcgplayer_skus;
 
 // Re-export main types
-pub use structures::MtgjsonStructures;
-pub use all_identifiers::MtgjsonAllIdentifiers;
-pub use all_printings::MtgjsonAllPrintings;
-pub use atomic_cards::MtgjsonAtomicCards;
-pub use card_types::MtgjsonCardObjectTypes;
-pub use compiled_list::MtgjsonCompiledList;
-pub use deck_list::MtgjsonDeckObjectList;
-pub use enum_values::MtgjsonEnumValues;
-pub use keywords::MtgjsonKeywords;
-pub use set_list::MtgjsonSetObjectList;
-pub use tcgplayer_skus::MtgjsonTcgplayerSkus;
+pub use structures::MtgjsonStructuresObject;
+pub use all_identifiers::MtgjsonAllIdentifiersObject;
+pub use all_printings::MtgjsonAllPrintingsObject;
+pub use atomic_cards::MtgjsonAtomicCardsObject;
+pub use card_types::MtgjsonCardTypesObject;
+pub use compiled_list::MtgjsonCompiledListObject;
+pub use deck_list::MtgjsonDeckListObject;
+pub use enum_values::MtgjsonEnumValuesObject;
+pub use keywords::MtgjsonKeywordsObject;
+pub use set_list::MtgjsonSetListObject;
+pub use tcgplayer_skus::MtgjsonTcgplayerSkusObject;

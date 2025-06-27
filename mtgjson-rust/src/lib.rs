@@ -22,63 +22,50 @@ impl JsonValue {
     }
 }
 
-// Import all modules  
-mod base;
-mod card;
-mod deck;
-mod foreign_data;
-mod game_formats;
-mod identifiers;
-mod leadership_skills;
-mod legalities;
-mod meta;
-mod prices;
-mod purchase_urls;
-mod related_cards;
-mod rulings;
-mod sealed_product;
-mod set;
-mod translations;
-mod utils;
-
+// Module declarations
+// Classes
+mod classes;
+// Compiled classes
+mod compiled_classes;
+// Providers
+mod providers;
 // High-computational modules
 mod output_generator;
 mod parallel_call;
 mod price_builder;
 mod set_builder;
-
-// Wrapper module for set_builder functions to expose as PyO3 functions
+// Wrapper module for set_builder functions
 mod set_builder_functions;
-
 // Wrapper module for utility functions
 mod utils_functions;
 
-// Compiled classes
-mod compiled_classes;
 
 // Import all the structs
-use card::MtgjsonCardObject;
-use deck::{MtgjsonDeckObject, MtgjsonDeckHeaderObject};
-use foreign_data::MtgjsonForeignDataObject;
-use game_formats::MtgjsonGameFormatsObject;
-use identifiers::MtgjsonIdentifiers;
-use leadership_skills::MtgjsonLeadershipSkillsObject;
-use legalities::MtgjsonLegalitiesObject;
-use meta::MtgjsonMetaObject;
-use prices::MtgjsonPricesObject;
-use purchase_urls::MtgjsonPurchaseUrls;
-use related_cards::MtgjsonRelatedCardsObject;
-use rulings::MtgjsonRulingObject;
-use sealed_product::{MtgjsonSealedProductObject, SealedProductCategory, SealedProductSubtype};
-use set::MtgjsonSetObject;
-use translations::MtgjsonTranslations;
+use classes::{
+    base::JsonObject,
+    card::MtgjsonCardObject,
+    deck::{MtgjsonDeckObject, MtgjsonDeckHeaderObject},
+    foreign_data::MtgjsonForeignDataObject,
+    game_formats::MtgjsonGameFormatsObject,
+    identifiers::MtgjsonIdentifiersObject,
+    leadership_skills::MtgjsonLeadershipSkillsObject,
+    legalities::MtgjsonLegalitiesObject,
+    meta::MtgjsonMetaObject,
+    prices::MtgjsonPricesObject,
+    purchase_urls::MtgjsonPurchaseUrlsObject,
+    related_cards::MtgjsonRelatedCardsObject,
+    rulings::MtgjsonRulingObject,
+    sealed_product::{MtgjsonSealedProductObject, SealedProductCategory, SealedProductSubtype},
+    set::MtgjsonSetObject,
+    translations::MtgjsonTranslationsObject,
+};
 
 // Import compiled classes
 use compiled_classes::{
-    MtgjsonStructures, MtgjsonCompiledList, MtgjsonDeckObjectList, 
-    MtgjsonKeywords, MtgjsonAllIdentifiers, MtgjsonAllPrintings,
-    MtgjsonAtomicCards, MtgjsonCardObjectTypes, MtgjsonEnumValues,
-    MtgjsonSetObjectList, MtgjsonTcgplayerSkus
+    MtgjsonStructuresObject, MtgjsonCompiledListObject, MtgjsonDeckListObject, 
+    MtgjsonKeywordsObject, MtgjsonAllIdentifiersObject, MtgjsonAllPrintingsObject,
+    MtgjsonAtomicCardsObject, MtgjsonCardTypesObject, MtgjsonEnumValuesObject,
+    MtgjsonSetListObject, MtgjsonTcgplayerSkusObject
 };
 
 // Re-export for tests and external usage  
@@ -86,6 +73,7 @@ pub use output_generator::OutputGenerator;
 pub use price_builder::PriceBuilder;
 pub use parallel_call::{ParallelProcessor, ParallelIterator};
 pub use set_builder_functions::*;
+pub use providers::*;
 
 /// Python module definition
 #[pymodule]
@@ -99,34 +87,34 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<MtgjsonDeckHeaderObject>()?;
     m.add_class::<MtgjsonForeignDataObject>()?;
     m.add_class::<MtgjsonGameFormatsObject>()?;
-    m.add_class::<MtgjsonIdentifiers>()?;
+    m.add_class::<MtgjsonIdentifiersObject>()?;
     m.add_class::<MtgjsonLeadershipSkillsObject>()?;
     m.add_class::<MtgjsonLegalitiesObject>()?;
     m.add_class::<MtgjsonMetaObject>()?;
     m.add_class::<MtgjsonPricesObject>()?;
-    m.add_class::<MtgjsonPurchaseUrls>()?;
+    m.add_class::<MtgjsonPurchaseUrlsObject>()?;
     m.add_class::<MtgjsonRelatedCardsObject>()?;
     m.add_class::<MtgjsonRulingObject>()?;
     m.add_class::<MtgjsonSealedProductObject>()?;
     m.add_class::<MtgjsonSetObject>()?;
-    m.add_class::<MtgjsonTranslations>()?;
+    m.add_class::<MtgjsonTranslationsObject>()?;
     
     // Add enums
     m.add_class::<SealedProductCategory>()?;
     m.add_class::<SealedProductSubtype>()?;
     
     // Add compiled classes
-    m.add_class::<MtgjsonStructures>()?;
-    m.add_class::<MtgjsonCompiledList>()?;
-    m.add_class::<MtgjsonDeckObjectList>()?;
-    m.add_class::<MtgjsonKeywords>()?;
-    m.add_class::<MtgjsonAllIdentifiers>()?;
-    m.add_class::<MtgjsonAllPrintings>()?;
-    m.add_class::<MtgjsonAtomicCards>()?;
-    m.add_class::<MtgjsonCardObjectTypes>()?;
-    m.add_class::<MtgjsonEnumValues>()?;
-    m.add_class::<MtgjsonSetObjectList>()?;
-    m.add_class::<MtgjsonTcgplayerSkus>()?;
+    m.add_class::<MtgjsonStructuresObject>()?;
+    m.add_class::<MtgjsonCompiledListObject>()?;
+    m.add_class::<MtgjsonDeckListObject>()?;
+    m.add_class::<MtgjsonKeywordsObject>()?;
+    m.add_class::<MtgjsonAllIdentifiersObject>()?;
+    m.add_class::<MtgjsonAllPrintingsObject>()?;
+    m.add_class::<MtgjsonAtomicCardsObject>()?;
+    m.add_class::<MtgjsonCardTypesObject>()?;
+    m.add_class::<MtgjsonEnumValuesObject>()?;
+    m.add_class::<MtgjsonSetListObject>()?;
+    m.add_class::<MtgjsonTcgplayerSkusObject>()?;
     
     // Add high-performance classes
     m.add_class::<output_generator::OutputGenerator>()?;

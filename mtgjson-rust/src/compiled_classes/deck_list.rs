@@ -1,19 +1,19 @@
-use crate::base::JsonObject;
+use crate::classes::base::JsonObject;
 use crate::deck::MtgjsonDeckHeaderObject;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// MTGJSON DeckList Object
-/// Rust equivalent of MtgjsonDeckObjectListObject
+/// Rust equivalent of MtgjsonDeckListObjectObject
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[pyclass(name = "MtgjsonDeckObjectList")]
-pub struct MtgjsonDeckObjectList {
+#[pyclass(name = "MtgjsonDeckListObject")]
+pub struct MtgjsonDeckListObject {
     #[pyo3(get, set)]
     pub decks: Vec<MtgjsonDeckHeaderObject>,
 }
 
 #[pymethods]
-impl MtgjsonDeckObjectList {
+impl MtgjsonDeckListObject {
     #[new]
     pub fn new(deck_headers: Vec<MtgjsonDeckHeaderObject>) -> Self {
         Self { 
@@ -126,13 +126,13 @@ impl MtgjsonDeckObjectList {
     }
 }
 
-impl Default for MtgjsonDeckObjectList {
+impl Default for MtgjsonDeckListObject {
     fn default() -> Self {
         Self::empty()
     }
 }
 
-impl JsonObject for MtgjsonDeckObjectList {}
+impl JsonObject for MtgjsonDeckListObject {}
 
 #[cfg(test)]
 mod tests {
@@ -155,7 +155,7 @@ mod tests {
             create_test_deck_header("TEST2", "Test Deck 2", "commander", "2023-02-01"),
         ];
         
-        let deck_list = MtgjsonDeckObjectList::new(deck_headers);
+        let deck_list = MtgjsonDeckListObject::new(deck_headers);
         assert_eq!(deck_list.deck_count(), 2);
         assert!(deck_list.find_deck_by_code("TEST1").is_some());
         assert!(deck_list.find_deck_by_code("TEST3").is_none());
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_add_remove_decks() {
-        let mut deck_list = MtgjsonDeckObjectList::empty();
+        let mut deck_list = MtgjsonDeckListObject::empty();
         assert_eq!(deck_list.deck_count(), 0);
         
         let deck_header = create_test_deck_header("TEST1", "Test Deck", "standard", "2023-01-01");
@@ -183,7 +183,7 @@ mod tests {
             create_test_deck_header("CMDR2", "Commander Deck 2", "commander", "2023-03-01"),
         ];
         
-        let deck_list = MtgjsonDeckObjectList::new(deck_headers);
+        let deck_list = MtgjsonDeckListObject::new(deck_headers);
         let commander_decks = deck_list.get_decks_by_type("commander");
         assert_eq!(commander_decks.len(), 2);
         
@@ -199,7 +199,7 @@ mod tests {
             create_test_deck_header("CMDR2", "Commander Deck 2", "commander", "2023-03-01"),
         ];
         
-        let deck_list = MtgjsonDeckObjectList::new(deck_headers);
+        let deck_list = MtgjsonDeckListObject::new(deck_headers);
         let unique_types = deck_list.get_unique_types();
         assert_eq!(unique_types, vec!["commander", "standard"]);
     }

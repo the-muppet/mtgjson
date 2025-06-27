@@ -1,14 +1,16 @@
-use crate::base::{skip_if_empty_optional_string, skip_if_empty_string, skip_if_empty_vec, JsonObject};
-use crate::foreign_data::MtgjsonForeignDataObject;
-use crate::game_formats::MtgjsonGameFormatsObject;
-use crate::identifiers::MtgjsonIdentifiers;
-use crate::leadership_skills::MtgjsonLeadershipSkillsObject;
-use crate::legalities::MtgjsonLegalitiesObject;
-use crate::prices::MtgjsonPricesObject;
-use crate::purchase_urls::MtgjsonPurchaseUrls;
-use crate::related_cards::MtgjsonRelatedCardsObject;
-use crate::rulings::MtgjsonRulingObject;
-use crate::utils::MtgjsonUtils;
+use crate::classes::{
+    base::{skip_if_empty_optional_string, skip_if_empty_string, skip_if_empty_vec, JsonObject},
+    foreign_data::MtgjsonForeignDataObject,
+    game_formats::MtgjsonGameFormatsObject,
+    identifiers::MtgjsonIdentifiersObject,
+    leadership_skills::MtgjsonLeadershipSkillsObject,
+    legalities::MtgjsonLegalitiesObject,
+    prices::MtgjsonPricesObject,
+    purchase_urls::MtgjsonPurchaseUrlsObject,
+    related_cards::MtgjsonRelatedCardsObject,
+    rulings::MtgjsonRulingObject,
+};
+use crate::utils_functions::MtgjsonUtils;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use serde::{Deserialize, Serialize};
@@ -146,7 +148,7 @@ pub struct MtgjsonCardObject {
     pub has_non_foil: Option<bool>,
     
     #[pyo3(get, set)]
-    pub identifiers: MtgjsonIdentifiers,
+    pub identifiers: MtgjsonIdentifiersObject,
     
     #[serde(skip_serializing_if = "Option::is_none")]
     #[pyo3(get, set)]
@@ -285,7 +287,7 @@ pub struct MtgjsonCardObject {
     pub promo_types: Vec<String>,
     
     #[pyo3(get, set)]
-    pub purchase_urls: MtgjsonPurchaseUrls,
+    pub purchase_urls: MtgjsonPurchaseUrlsObject,
     
     #[pyo3(get, set)]
     pub rarity: String,
@@ -422,7 +424,7 @@ impl MtgjsonCardObject {
             has_content_warning: None,
             has_foil: None,
             has_non_foil: None,
-            identifiers: MtgjsonIdentifiers::new(),
+            identifiers: MtgjsonIdentifiersObject::new(),
             is_alternative: None,
             is_foil: None,
             is_full_art: None,
@@ -465,7 +467,7 @@ impl MtgjsonCardObject {
             ),
             printings: Vec::new(),
             promo_types: Vec::new(),
-            purchase_urls: MtgjsonPurchaseUrls::new(),
+            purchase_urls: MtgjsonPurchaseUrlsObject::new(),
             rarity: String::new(),
             rebalanced_printings: Vec::new(),
             related_cards: None,

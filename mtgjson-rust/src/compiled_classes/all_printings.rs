@@ -7,10 +7,10 @@ use std::fs;
 use std::path::Path;
 
 /// MTGJSON AllPrintings Object
-/// Rust equivalent of MtgjsonAllPrintingsObject
+/// Rust equivalent of MtgjsonAllPrintingsObjectObject
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[pyclass(name = "MtgjsonAllPrintings")]
-pub struct MtgjsonAllPrintings {
+#[pyclass(name = "MtgjsonAllPrintingsObject")]
+pub struct MtgjsonAllPrintingsObject {
     #[pyo3(get, set)]
     pub all_sets_dict: HashMap<String, MtgjsonSetObject>,
     
@@ -19,7 +19,7 @@ pub struct MtgjsonAllPrintings {
 }
 
 #[pymethods]
-impl MtgjsonAllPrintings {
+impl MtgjsonAllPrintingsObject {
     #[new]
     pub fn new() -> Self {
         Self {
@@ -200,12 +200,55 @@ impl MtgjsonAllPrintings {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
         })
     }
+
+    /// Pretty print the AllPrintings data
+    pub fn pretty_print(&self) -> PyResult<String> {
+        let json_str = self.to_json()?;
+        match serde_json::from_str::<serde_json::Value>(&json_str) {
+            Ok(json_value) => {
+                match serde_json::to_string_pretty(&json_value) {
+                    Ok(pretty) => Ok(pretty),
+                    Err(e) => Ok(format!("Error formatting JSON: {}", e))
+                }
+            },
+            Err(e) => Ok(format!("Error parsing JSON: {}", e))
+        }
+    }
+    
+    /// Get summary information about the AllPrintings data
+    pub fn summary(&self) -> PyResult<String> {
+        let set_count = self.len()?;
+        let is_empty = self.is_empty()?;
+        let source = &self.source_path;
+        
+        Ok(format!(
+            "MTGJSON AllPrintings Summary:\n\
+             └─ Sets: {}\n\
+             └─ Empty: {}\n\
+             └─ Source: {}\n\
+             └─ Available methods: add_set, filter_by_format, get_set_contents, etc.",
+            set_count, is_empty, source
+        ))
+    }
+    
+    /// List all set codes
+    pub fn list_set_codes(&self) -> PyResult<Vec<String>> {
+        let mut codes = Vec::new();
+        
+        // Iterate through all sets and collect their codes
+        for (set_code, _set_data) in &self.all_sets_dict {
+            codes.push(set_code.clone());
+        }
+        
+        codes.sort();
+        Ok(codes)
+    }
 }
 
-impl Default for MtgjsonAllPrintings {
+impl Default for MtgjsonAllPrintingsObject {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl JsonObject for MtgjsonAllPrintings {}
+impl JsonObject for MtgjsonAllPrintingsObject {}

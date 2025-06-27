@@ -5,14 +5,14 @@ use std::collections::HashMap;
 
 /// MTGJSON EnumValues Object
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[pyclass(name = "MtgjsonEnumValues")]
-pub struct MtgjsonEnumValues {
+#[pyclass(name = "MtgjsonEnumValuesObject")]
+pub struct MtgjsonEnumValuesObject {
     #[pyo3(get, set)]
     pub attr_value_dict: HashMap<String, String>,
 }
 
 #[pymethods]
-impl MtgjsonEnumValues {
+impl MtgjsonEnumValuesObject {
     #[new]
     pub fn new() -> Self {
         Self {
@@ -21,10 +21,10 @@ impl MtgjsonEnumValues {
     }
 }
 
-impl Default for MtgjsonEnumValues {
+impl Default for MtgjsonEnumValuesObject {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl JsonObject for MtgjsonEnumValues {}
+impl JsonObject for MtgjsonEnumValuesObject {}

@@ -1,22 +1,22 @@
 use crate::base::JsonObject;
-use crate::compiled_classes::structures::MtgjsonStructures;
+use crate::compiled_classes::structures::MtgjsonStructuresObject;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// MTGJSON CompiledList Object
-/// Rust equivalent of MtgjsonCompiledListObject
+/// Rust equivalent of MtgjsonCompiledListObjectObject
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[pyclass(name = "MtgjsonCompiledList")]
-pub struct MtgjsonCompiledList {
+#[pyclass(name = "MtgjsonCompiledListObject")]
+pub struct MtgjsonCompiledListObject {
     #[pyo3(get, set)]
     pub files: Vec<String>,
 }
 
 #[pymethods]
-impl MtgjsonCompiledList {
+impl MtgjsonCompiledListObject {
     #[new]
     pub fn new() -> Self {
-        let structures = MtgjsonStructures::new();
+        let structures = MtgjsonStructuresObject::new();
         let files = structures.get_compiled_list_files();
         
         Self { files }
@@ -71,13 +71,13 @@ impl MtgjsonCompiledList {
     }
 }
 
-impl Default for MtgjsonCompiledList {
+impl Default for MtgjsonCompiledListObject {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl JsonObject for MtgjsonCompiledList {}
+impl JsonObject for MtgjsonCompiledListObject {}
 
 #[cfg(test)]
 mod tests {
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn test_compiled_list_creation() {
-        let compiled_list = MtgjsonCompiledList::new();
+        let compiled_list = MtgjsonCompiledListObject::new();
         assert!(!compiled_list.files.is_empty());
         assert!(compiled_list.contains_file("AllPrintings"));
         assert!(compiled_list.contains_file("AtomicCards"));
@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn test_add_remove_files() {
-        let mut compiled_list = MtgjsonCompiledList::new();
+        let mut compiled_list = MtgjsonCompiledListObject::new();
         let initial_count = compiled_list.file_count();
         
         compiled_list.add_file("TestFile".to_string());
@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn test_from_files() {
         let files = vec!["FileB".to_string(), "FileA".to_string(), "FileC".to_string()];
-        let compiled_list = MtgjsonCompiledList::from_files(files);
+        let compiled_list = MtgjsonCompiledListObject::from_files(files);
         
         assert_eq!(compiled_list.files, vec!["FileA", "FileB", "FileC"]);
     }

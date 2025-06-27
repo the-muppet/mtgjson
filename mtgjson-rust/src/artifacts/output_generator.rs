@@ -59,7 +59,7 @@ impl OutputGenerator {
     /// Build AllPrintings and related format files
     pub fn build_all_printings_files(&self, pretty_print: bool) -> PyResult<()> {
         // Generate AllPrintings
-        let all_printings = MtgjsonAllPrintings::new();
+        let all_printings = MtgjsonAllPrintingsObject::new();
         let all_printings_json = serde_json::to_string(&all_printings).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
         })?;
@@ -68,7 +68,7 @@ impl OutputGenerator {
         self.build_format_specific_files(&all_printings, pretty_print)?;
         
         // Generate AllIdentifiers
-        let all_identifiers = MtgjsonAllIdentifiers::new();
+        let all_identifiers = MtgjsonAllIdentifiersObject::new();
         let all_identifiers_json = serde_json::to_string(&all_identifiers).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
         })?;
@@ -78,7 +78,7 @@ impl OutputGenerator {
     }
     
     /// Build format-specific AllPrintings files
-    pub fn build_format_specific_files(&self, all_printings: &MtgjsonAllPrintings, pretty_print: bool) -> PyResult<()> {
+    pub fn build_format_specific_files(&self, all_printings: &MtgjsonAllPrintingsObject, pretty_print: bool) -> PyResult<()> {
         let format_map = self.construct_format_map()?;
         
         for (format_name, _set_codes) in format_map {
@@ -95,7 +95,7 @@ impl OutputGenerator {
     
     /// Build atomic cards files
     pub fn build_atomic_cards(&self, pretty_print: bool) -> PyResult<()> {
-        let atomic_cards = MtgjsonAtomicCards::new(None);
+        let atomic_cards = MtgjsonAtomicCardsObject::new(None);
         let atomic_cards_json = serde_json::to_string(&atomic_cards).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
         })?;
@@ -111,7 +111,7 @@ impl OutputGenerator {
         let card_format_map = self.construct_atomic_cards_format_map()?;
         
         for (format_name, _cards) in card_format_map {
-            let atomic_cards = MtgjsonAtomicCards::new(None);
+            let atomic_cards = MtgjsonAtomicCardsObject::new(None);
             let filename = format!("{}Cards", format_name);
             let atomic_cards_json = serde_json::to_string(&atomic_cards).map_err(|e| {
                 PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
@@ -137,7 +137,7 @@ impl OutputGenerator {
     
     /// Build other compiled outputs
     pub fn build_compiled_list(&self, pretty_print: bool) -> PyResult<()> {
-        let compiled_list = MtgjsonCompiledList::new();
+        let compiled_list = MtgjsonCompiledListObject::new();
         let compiled_list_json = serde_json::to_string(&compiled_list).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
         })?;
@@ -145,7 +145,7 @@ impl OutputGenerator {
     }
     
     pub fn build_keywords(&self, pretty_print: bool) -> PyResult<()> {
-        let keywords = MtgjsonKeywords::new();
+        let keywords = MtgjsonKeywordsObject::new();
         let keywords_json = serde_json::to_string(&keywords).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
         })?;
@@ -153,7 +153,7 @@ impl OutputGenerator {
     }
     
     pub fn build_card_types(&self, pretty_print: bool) -> PyResult<()> {
-        let card_types = MtgjsonCardObjectTypes::new();
+        let card_types = MtgjsonCardTypesObject::new();
         let card_types_json = serde_json::to_string(&card_types).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
         })?;
@@ -169,7 +169,7 @@ impl OutputGenerator {
     }
     
     pub fn build_set_list(&self, pretty_print: bool) -> PyResult<()> {
-        let set_list = MtgjsonSetObjectList::new();
+        let set_list = MtgjsonSetListObject::new();
         let set_list_json = serde_json::to_string(&set_list).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
         })?;
@@ -177,7 +177,7 @@ impl OutputGenerator {
     }
     
     pub fn build_deck_list(&self, pretty_print: bool) -> PyResult<()> {
-        let deck_list = MtgjsonDeckObjectList::new(Vec::new());
+        let deck_list = MtgjsonDeckListObject::new(Vec::new());
         let deck_list_json = serde_json::to_string(&deck_list).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
         })?;
@@ -185,7 +185,7 @@ impl OutputGenerator {
     }
     
     pub fn build_enum_values(&self, pretty_print: bool) -> PyResult<()> {
-        let enum_values = MtgjsonEnumValues::new();
+        let enum_values = MtgjsonEnumValuesObject::new();
         let enum_values_json = serde_json::to_string(&enum_values).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
         })?;
@@ -259,12 +259,12 @@ impl OutputGenerator {
     /// Filter AllPrintings data by format
     pub fn filter_all_printings_by_format(
         &self, 
-        all_printings: &MtgjsonAllPrintings,
+        all_printings: &MtgjsonAllPrintingsObject,
         format_name: &str
-    ) -> PyResult<MtgjsonAllPrintings> {
+    ) -> PyResult<MtgjsonAllPrintingsObject> {
         // High-performance filtering logic
         // TODO: This would use the actual data structures
-        Ok(MtgjsonAllPrintings::new())
+        Ok(MtgjsonAllPrintingsObject::new())
     }
     
     /// Generate file hashes for integrity checking

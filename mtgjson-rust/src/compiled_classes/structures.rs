@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 /// MTGJSON Internal Object for Output Files
-/// Rust equivalent of MtgjsonStructuresObject
+/// Rust equivalent of MtgjsonStructuresObjectObject
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[pyclass(name = "MtgjsonStructures")]
-pub struct MtgjsonStructures {
+#[pyclass(name = "MtgjsonStructuresObject")]
+pub struct MtgjsonStructuresObject {
     // Main compiled outputs
     #[pyo3(get)]
     pub all_printings: String,
@@ -78,7 +78,7 @@ pub struct MtgjsonStructures {
 }
 
 #[pymethods]
-impl MtgjsonStructures {
+impl MtgjsonStructuresObject {
     #[new]
     pub fn new() -> Self {
         Self {
@@ -165,10 +165,10 @@ impl MtgjsonStructures {
     }
 }
 
-impl Default for MtgjsonStructures {
+impl Default for MtgjsonStructuresObject {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl JsonObject for MtgjsonStructures {}
+impl JsonObject for MtgjsonStructuresObject {}

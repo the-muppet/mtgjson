@@ -1,12 +1,11 @@
 // PyO3 wrapper functions for utility functions
 use pyo3::prelude::*;
-use crate::base;
-use crate::utils::MtgjsonUtils;
+use crate::classes::{base::to_camel_case, utils::MtgjsonUtils};
 
 /// Convert snake_case to camelCase
 #[pyfunction]
 pub fn to_camel_case(snake_str: &str) -> String {
-    base::to_camel_case(snake_str)
+    to_camel_case(snake_str)
 }
 
 /// Make filename Windows-safe
