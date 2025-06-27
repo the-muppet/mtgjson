@@ -38,13 +38,33 @@ def check_maturin_installed():
 
 def build_rust_module(mode='release'):
     """Build the Rust module using maturin."""
-    rust_dir = Path('mtgjson-rust')
+    # Get the absolute path to the script directory
+    script_dir = Path(__file__).parent.absolute()
+    rust_dir = script_dir / 'mtgjson-rust'
     
     if not rust_dir.exists():
         print(f"✗ Rust directory {rust_dir} not found")
+        print(f"  Current working directory: {os.getcwd()}")
+        print(f"  Script directory: {script_dir}")
+        print(f"  Looking for: {rust_dir}")
+        print(f"  Available directories in {script_dir}:")
+        try:
+            for item in script_dir.iterdir():
+                if item.is_dir():
+                    print(f"    - {item.name}")
+        except Exception as e:
+            print(f"    Error listing directories: {e}")
+        return False
+    
+    # Validate Cargo.toml exists
+    cargo_toml = rust_dir / 'Cargo.toml'
+    if not cargo_toml.exists():
+        print(f"✗ Cargo.toml not found at {cargo_toml}")
         return False
     
     print(f"Building Rust module in {mode} mode...")
+    print(f"  Rust directory: {rust_dir}")
+    print(f"  Cargo.toml: {cargo_toml}")
     
     # Change to the Rust directory
     original_dir = os.getcwd()
@@ -68,13 +88,33 @@ def build_rust_module(mode='release'):
 
 def build_wheel():
     """Build a wheel for distribution."""
-    rust_dir = Path('mtgjson-rust')
+    # Get the absolute path to the script directory
+    script_dir = Path(__file__).parent.absolute()
+    rust_dir = script_dir / 'mtgjson-rust'
     
     if not rust_dir.exists():
         print(f"✗ Rust directory {rust_dir} not found")
+        print(f"  Current working directory: {os.getcwd()}")
+        print(f"  Script directory: {script_dir}")
+        print(f"  Looking for: {rust_dir}")
+        print(f"  Available directories in {script_dir}:")
+        try:
+            for item in script_dir.iterdir():
+                if item.is_dir():
+                    print(f"    - {item.name}")
+        except Exception as e:
+            print(f"    Error listing directories: {e}")
+        return False
+    
+    # Validate Cargo.toml exists
+    cargo_toml = rust_dir / 'Cargo.toml'
+    if not cargo_toml.exists():
+        print(f"✗ Cargo.toml not found at {cargo_toml}")
         return False
     
     print("Building wheel...")
+    print(f"  Rust directory: {rust_dir}")
+    print(f"  Cargo.toml: {cargo_toml}")
     
     # Change to the Rust directory
     original_dir = os.getcwd()
@@ -102,6 +142,31 @@ def build_wheel():
     finally:
         os.chdir(original_dir)
 
+def print_troubleshooting_info():
+    """Print troubleshooting information."""
+    print("\n" + "=" * 50)
+    print("TROUBLESHOOTING INFORMATION")
+    print("=" * 50)
+    print(f"Platform: {sys.platform}")
+    print(f"Python: {sys.version}")
+    print(f"Current directory: {os.getcwd()}")
+    print(f"Script location: {Path(__file__).absolute()}")
+    print(f"Script directory: {Path(__file__).parent.absolute()}")
+    
+    script_dir = Path(__file__).parent.absolute()
+    print(f"\nContents of {script_dir}:")
+    try:
+        for item in script_dir.iterdir():
+            print(f"  {'[DIR]' if item.is_dir() else '[FILE]'} {item.name}")
+    except Exception as e:
+        print(f"  Error listing contents: {e}")
+    
+    if sys.platform == "win32":
+        print("\nWindows-specific notes:")
+        print("- Make sure you're running from the correct directory")
+        print("- Try using forward slashes or raw strings for paths")
+        print("- Ensure PowerShell/Command Prompt has proper permissions")
+
 def main():
     """Main function."""
     import argparse
@@ -113,8 +178,14 @@ def main():
                        help='Build a wheel instead of installing in development mode')
     parser.add_argument('--check-only', action='store_true',
                        help='Only check if required tools are installed')
+    parser.add_argument('--troubleshoot', action='store_true',
+                       help='Print troubleshooting information and exit')
     
     args = parser.parse_args()
+    
+    if args.troubleshoot:
+        print_troubleshooting_info()
+        return
     
     print("MTGJSON Rust Module Builder")
     print("=" * 30)
@@ -142,6 +213,13 @@ def main():
             print("The mtgjson_rust module is now available for import in Python.")
     else:
         print("\n✗ Build failed!")
+        print("\nFor troubleshooting information, run:")
+        print(f"  python {Path(__file__).name} --troubleshoot")
+        if sys.platform == "win32":
+            print("\nCommon Windows issues:")
+            print("- Make sure you're in the correct directory (same as this script)")
+            print("- Check that the mtgjson-rust folder exists alongside this script")
+            print("- Try running as Administrator if you get permission errors")
         sys.exit(1)
 
 if __name__ == '__main__':
