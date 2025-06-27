@@ -1,4 +1,4 @@
-// MTGJSON parallel call - Ultra-high performance parallel processing using Rust async/tokio
+THIS SHOULD BE A LINTER ERROR// MTGJSON parallel call - Ultra-high performance parallel processing using Rust async/tokio
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
 
