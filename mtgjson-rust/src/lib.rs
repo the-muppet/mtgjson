@@ -78,8 +78,7 @@ use compiled_classes::{
     MtgjsonSetList, MtgjsonTcgplayerSkus
 };
 
-// Re-export for tests and external usage
-pub use card::MtgjsonCard;
+// Re-export for tests and external usage  
 pub use output_generator::OutputGenerator;
 pub use price_builder::PriceBuilder;
 pub use parallel_call::{ParallelProcessor, ParallelIterator};

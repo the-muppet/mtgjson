@@ -56,6 +56,7 @@ pub fn parse_foreign(
 
 /// Parse printings from Scryfall prints URL
 #[pyfunction]
+#[pyo3(signature = (sf_prints_url=None))]
 pub fn parse_printings(sf_prints_url: Option<&str>) -> Vec<String> {
     set_builder::parse_printings(sf_prints_url)
 }
@@ -74,8 +75,9 @@ pub fn add_leadership_skills(mtgjson_card: &mut crate::card::MtgjsonCard) {
 
 /// Mark duel deck assignments for cards
 #[pyfunction]
-pub fn mark_duel_decks(set_code: &str, mtgjson_cards: &mut Vec<crate::card::MtgjsonCard>) {
-    set_builder::mark_duel_decks(set_code, mtgjson_cards)
+pub fn mark_duel_decks(set_code: &str, mut mtgjson_cards: Vec<crate::card::MtgjsonCard>) -> Vec<crate::card::MtgjsonCard> {
+    set_builder::mark_duel_decks(set_code, &mut mtgjson_cards);
+    mtgjson_cards
 }
 
 /// Parse keyrune code from URL
@@ -94,11 +96,10 @@ pub fn get_translation_data(mtgjson_set_name: &str) -> Option<HashMap<String, St
 #[pyfunction]
 pub fn build_base_mtgjson_cards(
     set_code: &str,
-    additional_cards: Option<Vec<HashMap<String, serde_json::Value>>>,
     is_token: bool,
     set_release_date: &str,
 ) -> Vec<crate::card::MtgjsonCard> {
-    set_builder::build_base_mtgjson_cards(set_code, additional_cards, is_token, set_release_date)
+    set_builder::build_base_mtgjson_cards(set_code, None, is_token, set_release_date)
 }
 
 /// Build sealed products for a set
@@ -115,6 +116,7 @@ pub fn build_decks(set_code: &str) -> Vec<crate::deck::MtgjsonDeck> {
 
 /// Enhance cards with additional metadata
 #[pyfunction]
-pub fn enhance_cards_with_metadata(mtgjson_cards: &mut Vec<crate::card::MtgjsonCard>) {
-    set_builder::enhance_cards_with_metadata(mtgjson_cards)
+pub fn enhance_cards_with_metadata(mut mtgjson_cards: Vec<crate::card::MtgjsonCard>) -> Vec<crate::card::MtgjsonCard> {
+    set_builder::enhance_cards_with_metadata(&mut mtgjson_cards);
+    mtgjson_cards
 }

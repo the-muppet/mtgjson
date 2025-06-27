@@ -494,19 +494,15 @@ impl MtgjsonCard {
     }
 
     /// Convert to JSON Dict (Python-compatible)
-    pub fn to_json(&self) -> PyResult<pyo3::types::PyDict> {
-        use pyo3::prelude::*;
+    pub fn to_json<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, pyo3::types::PyDict>> {
+        let json_str = serde_json::to_string(self).map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!("Serialization error: {}", e))
+        })?;
         
-        Python::with_gil(|py| {
-            let json_str = serde_json::to_string(self).map_err(|e| {
-                pyo3::exceptions::PyValueError::new_err(format!("Serialization error: {}", e))
-            })?;
-            
-            let json_module = py.import_bound("json")?;
-            let dict = json_module.call_method1("loads", (json_str,))?;
-            
-            Ok(dict.downcast::<pyo3::types::PyDict>()?.clone())
-        })
+        let json_module = py.import_bound("json")?;
+        let dict = json_module.call_method1("loads", (json_str,))?;
+        
+        Ok(dict.downcast::<pyo3::types::PyDict>()?.clone())
     }
 
     /// Set internal illustration IDs for this card
