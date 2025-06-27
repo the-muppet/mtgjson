@@ -1,6 +1,6 @@
 // MTGJSON parallel call - High performance parallel processing using Rust async/tokio
 use pyo3::prelude::*;
-use std::future::Future;
+
 use std::collections::HashMap;
 use tokio::task::JoinSet;
 
