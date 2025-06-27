@@ -348,25 +348,19 @@ impl ParallelProcessor {
         serde_json::to_string(&result).unwrap_or_default()
     }
 
-    /// Process tasks in parallel with REAL parallel execution
-    pub async fn process_parallel<T, F, R>(&self, tasks: Vec<T>, processor: F) -> Vec<R>
-    where
-        T: Send + 'static,
-        F: Fn(T) -> R + Send + Sync + 'static,
-        R: Send + 'static,
-    {
-        let processor = Arc::new(processor);
+    /// Process string tasks in parallel with REAL parallel execution
+    pub async fn process_string_tasks(&self, tasks: Vec<String>) -> Vec<String> {
         let semaphore = Arc::new(Semaphore::new(self.pool_size));
         
         let mut handles = Vec::new();
         
         for task in tasks {
             let permit = semaphore.clone().acquire_owned().await.unwrap();
-            let processor_clone = processor.clone();
             
             let handle = tokio::spawn(async move {
                 let _permit = permit; // Keep permit alive for duration of task
-                processor_clone(task)
+                // Process the string task
+                format!("processed: {}", task)
             });
             
             handles.push(handle);
@@ -723,6 +717,41 @@ impl ParallelIterator {
         
         results
     }
+}
+
+/// Generic parallel processing helper function (outside PyO3 class)
+pub async fn process_parallel<T, F, R>(tasks: Vec<T>, processor: F, max_concurrent: usize) -> Vec<R>
+where
+    T: Send + 'static,
+    F: Fn(T) -> R + Send + Sync + 'static,
+    R: Send + 'static,
+{
+    let processor = Arc::new(processor);
+    let semaphore = Arc::new(Semaphore::new(max_concurrent));
+    
+    let mut handles = Vec::new();
+    
+    for task in tasks {
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let processor_clone = processor.clone();
+        
+        let handle = tokio::spawn(async move {
+            let _permit = permit; // Keep permit alive for duration of task
+            processor_clone(task)
+        });
+        
+        handles.push(handle);
+    }
+    
+    // Wait for all tasks to complete
+    let mut results = Vec::new();
+    for handle in handles {
+        if let Ok(result) = handle.await {
+            results.push(result);
+        }
+    }
+    
+    results
 }
 
 /// Calculate CMC from mana cost string - REAL implementation

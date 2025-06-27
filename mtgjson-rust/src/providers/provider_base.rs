@@ -32,12 +32,26 @@ pub trait AbstractProvider: Send + Sync {
         params: Option<HashMap<String, String>>,
     ) -> ProviderResult<String>;
     
+    /// Async download method (alias for download)
+    async fn download_async(
+        &self,
+        url: &str,
+        params: Option<HashMap<String, String>>,
+    ) -> ProviderResult<Value> {
+        self.download(url, params).await
+    }
+    
     /// Log download information
     fn log_download(&self, response: &Response);
     
     /// Get today's date in YYYY-MM-DD format
     fn today_date(&self) -> String {
         Utc::now().format("%Y-%m-%d").to_string()
+    }
+    
+    /// Generate today's price dictionary - default implementation
+    fn generate_today_price_dict(&self) -> HashMap<String, MtgjsonPricesObject> {
+        HashMap::new()
     }
     
     /// Generic method to generate today's price dictionary
