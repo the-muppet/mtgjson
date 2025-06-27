@@ -10,7 +10,6 @@ use crate::related_cards::MtgjsonRelatedCards;
 use crate::rulings::MtgjsonRuling;
 use crate::utils::MtgjsonUtils;
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
@@ -619,111 +618,72 @@ impl Default for MtgjsonCard {
 
 impl PartialOrd for MtgjsonCard {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // Use embedded Python for exact compatibility with Python sorting
-        Python::with_gil(|py| {
-            // Create the exact Python sorting logic inline
-            let python_code = r#"
-def compare_card_numbers(self_number, self_side, other_number, other_side):
-    """
-    Exact Python card sorting logic for 100% compatibility.
-    This matches the logic from mtgjson5.classes.mtgjson_card.MtgjsonCardObject
-    """
-    # Handle side comparison first
-    self_side = self_side if self_side else ""
-    other_side = other_side if other_side else ""
-    
-    if self_number == other_number:
-        if self_side < other_side:
-            return -1
-        elif self_side > other_side:
-            return 1
-        else:
-            return 0
-    
-    # Complex number comparison logic
-    # This needs to match exactly what Python does
-    
-    def clean_number(number):
-        """Clean number for comparison"""
-        if not number:
-            return (0, 0)
-        
-        # Extract numeric part and calculate length
-        numeric_part = ""
-        for char in number:
-            if char.isdigit():
-                numeric_part += char
-            else:
-                break
-        
-        try:
-            num = int(numeric_part) if numeric_part else 0
-            return (num, len(number))
-        except:
-            return (0, len(number))
-    
-    self_clean, self_len = clean_number(self_number)
-    other_clean, other_len = clean_number(other_number)
-    
-    # All digits comparison
-    self_all_digits = self_number.isdigit() if self_number else False
-    other_all_digits = other_number.isdigit() if other_number else False
-    
-    if self_all_digits and other_all_digits:
-        if self_clean != other_clean:
-            return -1 if self_clean < other_clean else 1
-        if self_len != other_len:
-            return -1 if self_len < other_len else 1
-        return -1 if self_side < other_side else (1 if self_side > other_side else 0)
-    
-    if self_all_digits:
-        if self_clean == other_clean:
-            return -1
-        return -1 if self_clean < other_clean else 1
-    
-    if other_all_digits:
-        if self_clean == other_clean:
-            return 1
-        return -1 if self_clean < other_clean else 1
-    
-    # Neither all digits
-    if self_clean == other_clean:
-        if not self_side and not other_side:
-            return -1 if self_number < other_number else (1 if self_number > other_number else 0)
-        return -1 if self_side < other_side else (1 if self_side > other_side else 0)
-    
-    return -1 if self_clean < other_clean else 1
+        // Exact Python __lt__ logic for 100% compatibility
+        let self_side = self.side.as_deref().unwrap_or("");
+        let other_side = other.side.as_deref().unwrap_or("");
 
-# Return the comparison result
-result = compare_card_numbers(self_number, self_side, other_number, other_side)
-"#;
-            
-            // Execute the Python code with our data
-            let locals = PyDict::new(py);
-            locals.set_item("self_number", &self.number).ok()?;
-            locals.set_item("self_side", &self.side).ok()?;
-            locals.set_item("other_number", &other.number).ok()?;
-            locals.set_item("other_side", &other.side).ok()?;
-            
-            py.run(python_code, None, Some(locals)).ok()?;
-            
-            // Get the result
-            let result: i32 = locals.get_item("result")?.extract().ok()?;
-            
-            match result {
-                -1 => Some(Ordering::Less),
-                0 => Some(Ordering::Equal),
-                1 => Some(Ordering::Greater),
-                _ => Some(Ordering::Equal),
+        if self.number == other.number {
+            return Some(self_side.cmp(other_side));
+        }
+
+        // Extract digits only, like Python: "".join(x for x in self.number if x.isdigit()) or "100000"
+        let self_number_clean = self.number.chars()
+            .filter(|c| c.is_ascii_digit())
+            .collect::<String>();
+        let self_number_clean = if self_number_clean.is_empty() { "100000" } else { &self_number_clean };
+        let self_number_clean_int = self_number_clean.parse::<i32>().unwrap_or(100000);
+
+        let other_number_clean = other.number.chars()
+            .filter(|c| c.is_ascii_digit())
+            .collect::<String>();
+        let other_number_clean = if other_number_clean.is_empty() { "100000" } else { &other_number_clean };
+        let other_number_clean_int = other_number_clean.parse::<i32>().unwrap_or(100000);
+
+        // Case 1: Both numbers are pure digits
+        if self.number == self_number_clean && other.number == other_number_clean {
+            if self_number_clean_int == other_number_clean_int {
+                if self_number_clean.len() != other_number_clean.len() {
+                    return Some(self_number_clean.len().cmp(&other_number_clean.len()));
+                }
+                return Some(self_side.cmp(other_side));
             }
-        }).unwrap_or_else(|| {
-            // Fallback to simple string comparison if Python fails
-            eprintln!("⚠️ Python sorting failed, using fallback");
-            match self.number.cmp(&other.number) {
-                Ordering::Equal => self.side.cmp(&other.side),
-                other => other,
+            return Some(self_number_clean_int.cmp(&other_number_clean_int));
+        }
+
+        // Case 2: Only self.number is pure digits
+        if self.number == self_number_clean {
+            if self_number_clean_int == other_number_clean_int {
+                return Some(Ordering::Less); // True in Python
             }
-        })
+            return Some(self_number_clean_int.cmp(&other_number_clean_int));
+        }
+
+        // Case 3: Only other.number is pure digits
+        if other.number == other_number_clean {
+            if self_number_clean_int == other_number_clean_int {
+                return Some(Ordering::Greater); // False in Python
+            }
+            return Some(self_number_clean_int.cmp(&other_number_clean_int));
+        }
+
+        // Case 4: Neither number is pure digits
+        if self_number_clean == other_number_clean {
+            if self_side.is_empty() && other_side.is_empty() {
+                return Some(self.number.cmp(&other.number));
+            }
+            return Some(self_side.cmp(other_side));
+        }
+
+        // Case 5: Different clean numbers with same value
+        if self_number_clean_int == other_number_clean_int {
+            if self_number_clean.len() != other_number_clean.len() {
+                return Some(self_number_clean.len().cmp(&other_number_clean.len()));
+            }
+            return Some(self_side.cmp(other_side));
+        }
+
+        // Default: Compare by clean number value
+        Some(self_number_clean_int.cmp(&other_number_clean_int))
     }
 }
 
