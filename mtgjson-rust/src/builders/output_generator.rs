@@ -1,4 +1,4 @@
-// MTGJSON output generator - High performance file writing and JSON processing
+THIS SHOULD BE A LINTER ERROR// MTGJSON output generator - High performance file writing and JSON processing
 use pyo3::prelude::*;
 
 use serde_json;

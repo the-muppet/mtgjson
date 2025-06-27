@@ -531,22 +531,59 @@ impl MtgjsonCardObject {
         }
     }
 
-    /// Set watermark with special processing
-    #[pyo3(signature = (watermark=None))]
+    /// Set watermark for the card with resource loading
     pub fn set_watermark(&mut self, watermark: Option<String>) {
-        let watermark = match watermark {
-            Some(w) if !w.is_empty() => w,
-            _ => return,
-        };
-
-        // TODO: Load watermark resource if needed
-        // For now, just set the watermark directly
-        if watermark == "set" {
-            // Would need to load resource and match against card name
-            // For now, just set it as-is
-            self.watermark = Some(watermark);
+        if let Some(watermark_value) = watermark {
+            if watermark_value == "set" {
+                // Load watermark resource if needed
+                if self.watermark_resource.is_empty() {
+                    self.load_watermark_resource();
+                }
+                
+                // Look up the actual watermark for this card in this set
+                if let Some(cards) = self.watermark_resource.get(&self.set_code.to_uppercase()) {
+                    for card_entry in cards {
+                        if let Some(name) = card_entry.get("name").and_then(|v| v.as_str()) {
+                            // Check if this card name matches (handle double-faced cards with " // ")
+                            let card_names: Vec<&str> = name.split(" // ").collect();
+                            if card_names.contains(&self.name.as_str()) {
+                                if let Some(actual_watermark) = card_entry.get("watermark").and_then(|v| v.as_str()) {
+                                    self.watermark = Some(actual_watermark.to_string());
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+                // If no override found, use the original watermark
+                self.watermark = Some(watermark_value);
+            } else {
+                self.watermark = Some(watermark_value);
+            }
         } else {
-            self.watermark = Some(watermark);
+            self.watermark = None;
+        }
+    }
+    
+    /// Load watermark resource from JSON file
+    fn load_watermark_resource(&mut self) {
+        let resource_path = std::env::current_dir()
+            .unwrap_or_else(|_| std::path::PathBuf::from("."))
+            .join("mtgjson5")
+            .join("resources")
+            .join("set_code_watermarks.json");
+        
+        match std::fs::read_to_string(&resource_path) {
+            Ok(content) => {
+                self.watermark_resource = serde_json::from_str(&content).unwrap_or_else(|e| {
+                    eprintln!("Warning: Failed to parse set_code_watermarks.json: {}", e);
+                    HashMap::new()
+                });
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to read set_code_watermarks.json: {}", e);
+                self.watermark_resource = HashMap::new();
+            }
         }
     }
 
@@ -725,19 +762,78 @@ impl PartialEq for MtgjsonCardObject {
 
 impl PartialOrd for MtgjsonCardObject {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // This implementation is not used by PyO3 comparison operators
-        // The actual comparison is done in __lt__ method using embedded Python
-        match self.__lt__(other) {
-            Ok(true) => Some(Ordering::Less),
-            Ok(false) => {
-                match other.__lt__(self) {
-                    Ok(true) => Some(Ordering::Greater),
-                    Ok(false) => Some(Ordering::Equal),
-                    Err(_) => None,
-                }
-            },
-            Err(_) => None,
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for MtgjsonCardObject {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Get side values, defaulting to empty string if None
+        let self_side = self.side.as_deref().unwrap_or("");
+        let other_side = other.side.as_deref().unwrap_or("");
+
+        // If card numbers are equal, compare by side letter
+        if self.number == other.number {
+            return self_side.cmp(other_side);
         }
+
+        // Extract numeric parts from card numbers, defaulting to "100000" if no digits
+        let self_number_clean: String = self.number.chars().filter(|c| c.is_ascii_digit()).collect();
+        let self_number_clean = if self_number_clean.is_empty() { "100000".to_string() } else { self_number_clean };
+        let self_number_clean_int: i32 = self_number_clean.parse().unwrap_or(100000);
+
+        let other_number_clean: String = other.number.chars().filter(|c| c.is_ascii_digit()).collect();
+        let other_number_clean = if other_number_clean.is_empty() { "100000".to_string() } else { other_number_clean };
+        let other_number_clean_int: i32 = other_number_clean.parse().unwrap_or(100000);
+
+        // Case 1: Both numbers are purely numeric
+        if self.number == self_number_clean && other.number == other_number_clean {
+            if self_number_clean_int == other_number_clean_int {
+                // If numeric values are equal, compare by string length first, then by side
+                if self_number_clean.len() != other_number_clean.len() {
+                    return self_number_clean.len().cmp(&other_number_clean.len());
+                }
+                return self_side.cmp(other_side);
+            }
+            return self_number_clean_int.cmp(&other_number_clean_int);
+        }
+
+        // Case 2: Self number is purely numeric, other is not
+        if self.number == self_number_clean {
+            if self_number_clean_int == other_number_clean_int {
+                return Ordering::Less; // Numeric comes before non-numeric
+            }
+            return self_number_clean_int.cmp(&other_number_clean_int);
+        }
+
+        // Case 3: Other number is purely numeric, self is not
+        if other.number == other_number_clean {
+            if self_number_clean_int == other_number_clean_int {
+                return Ordering::Greater; // Non-numeric comes after numeric
+            }
+            return self_number_clean_int.cmp(&other_number_clean_int);
+        }
+
+        // Case 4: Both numbers have non-numeric characters
+        if self_number_clean == other_number_clean {
+            // If no sides exist, fall back to string comparison of full numbers
+            if self_side.is_empty() && other_side.is_empty() {
+                return self.number.cmp(&other.number);
+            }
+            return self_side.cmp(other_side);
+        }
+
+        // Case 5: Different numeric parts
+        if self_number_clean_int == other_number_clean_int {
+            // Same numeric value, compare by string length first, then by side
+            if self_number_clean.len() != other_number_clean.len() {
+                return self_number_clean.len().cmp(&other_number_clean.len());
+            }
+            return self_side.cmp(other_side);
+        }
+
+        // Final fallback: compare by numeric values
+        self_number_clean_int.cmp(&other_number_clean_int)
     }
 }
 
