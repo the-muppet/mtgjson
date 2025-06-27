@@ -1,16 +1,9 @@
-use crate::base::JsonObject;
-use crate::card::MtgjsonCardObject;
-use crate::deck::MtgjsonDeckObject;
-use crate::foreign_data::MtgjsonForeignDataObject;
-use crate::game_formats::MtgjsonGameFormatsObject;
-use crate::leadership_skills::MtgjsonLeadershipSkillsObject;
-use crate::legalities::MtgjsonLegalitiesObject;
-use crate::meta::MtgjsonMetaObject;
-use crate::related_cards::MtgjsonRelatedCardsObject;
-use crate::rulings::MtgjsonRulingObject;
-use crate::sealed_product::MtgjsonSealedProductObject;
-use crate::set::MtgjsonSetObject;
-use crate::translations::MtgjsonTranslations;
+THIS SHOULD BE A LINTER ERRORuse crate::classes::{
+    JsonObject, MtgjsonCardObject, MtgjsonDeckObject, MtgjsonForeignDataObject,
+    MtgjsonGameFormatsObject, MtgjsonLeadershipSkillsObject, MtgjsonLegalitiesObject,
+    MtgjsonMetaObject, MtgjsonRelatedCardsObject, MtgjsonRulingObject, 
+    MtgjsonSealedProductObject, MtgjsonSetObject, MtgjsonTranslations
+};
 
 use chrono::{DateTime, Utc};
 use pyo3::prelude::*;
@@ -89,15 +82,139 @@ pub fn parse_foreign(
     card_number: &str,
     set_name: &str,
 ) -> Vec<MtgjsonForeignDataObject> {
-    let card_foreign_entries = Vec::new();
+    let mut card_foreign_entries = Vec::new();
     
     // Add information to get all languages
     let modified_url = sf_prints_url.replace("&unique=prints", "+lang%3Aany&unique=prints");
     
-    // TODO: Implement ScryfallProvider download_all_pages
-    // For now, return empty vector as placeholder
-    println!("Parsing foreign data for {} #{} in {}", card_name, card_number, set_name);
+    // Download all pages from Scryfall API
+    // TODO: This would need ScryfallProvider integration - for now simulate the logic
+    let prints_api_json = download_scryfall_all_pages(&modified_url);
     
+    if prints_api_json.is_empty() {
+        eprintln!("No data found for {}: {:?}", modified_url, prints_api_json);
+        return card_foreign_entries;
+    }
+
+    let constants = Constants::new();
+    
+    for foreign_card in prints_api_json {
+        // Skip if wrong set, number, or English
+        let card_set = foreign_card.get("set").and_then(|v| v.as_str()).unwrap_or("");
+        let card_collector_number = foreign_card.get("collector_number").and_then(|v| v.as_str()).unwrap_or("");
+        let card_lang = foreign_card.get("lang").and_then(|v| v.as_str()).unwrap_or("");
+        
+        if set_name != card_set || card_number != card_collector_number || card_lang == "en" {
+            continue;
+        }
+
+        let mut card_foreign_entry = MtgjsonForeignDataObject::new();
+        
+        // Map language using constants
+        if let Some(language) = constants.language_map.get(card_lang) {
+            card_foreign_entry.language = Some(language.clone());
+        } else {
+            eprintln!("Warning: Unable to get language for {:?}", foreign_card);
+        }
+
+        // Handle multiverse IDs
+        if let Some(multiverse_ids) = foreign_card.get("multiverse_ids")
+            .and_then(|v| v.as_array()) {
+            if !multiverse_ids.is_empty() {
+                if let Some(id) = multiverse_ids[0].as_u64() {
+                    card_foreign_entry.multiverse_id = Some(id as i32); // Deprecated - Remove in 5.4.0
+                    card_foreign_entry.identifiers.multiverse_id = Some(id.to_string());
+                }
+            }
+        }
+
+        // Set Scryfall ID
+        if let Some(scryfall_id) = foreign_card.get("id").and_then(|v| v.as_str()) {
+            card_foreign_entry.identifiers.scryfall_id = Some(scryfall_id.to_string());
+        }
+
+        // Handle card faces for double-faced cards
+        let mut actual_card_data = &foreign_card;
+        if let Some(card_faces) = foreign_card.get("card_faces").and_then(|v| v.as_array()) {
+            // Determine which face to use based on card name
+            let face_index = if let Some(card_name_from_data) = foreign_card.get("name").and_then(|v| v.as_str()) {
+                let first_face_name = card_name_from_data.split('/').next().unwrap_or("").trim();
+                if card_name.to_lowercase() == first_face_name.to_lowercase() {
+                    0
+                } else {
+                    1
+                }
+            } else {
+                0
+            };
+
+            println!("Split card found: Using face {} for {}", face_index, card_name);
+            
+            // Build the full name from all faces
+            let face_names: Vec<String> = card_faces.iter()
+                .filter_map(|face| {
+                    face.get("printed_name").and_then(|v| v.as_str())
+                        .or_else(|| face.get("name").and_then(|v| v.as_str()))
+                        .map(|s| s.to_string())
+                })
+                .collect();
+            
+            if !face_names.is_empty() {
+                card_foreign_entry.name = Some(face_names.join(" // "));
+            }
+
+            // Use the specific face data
+            if let Some(face_data) = card_faces.get(face_index) {
+                actual_card_data = face_data;
+                
+                card_foreign_entry.face_name = face_data.get("printed_name")
+                    .and_then(|v| v.as_str())
+                    .or_else(|| face_data.get("name").and_then(|v| v.as_str()))
+                    .map(|s| s.to_string());
+                
+                if card_foreign_entry.face_name.is_none() {
+                    println!("Unable to resolve face_name for {:?}, using name", face_data);
+                    card_foreign_entry.face_name = face_data.get("name")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                }
+            }
+        }
+
+        // Set the name if not already set
+        if card_foreign_entry.name.is_none() {
+            card_foreign_entry.name = actual_card_data.get("printed_name")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            // Special case for IKO Japanese cards
+            if set_name.to_uppercase() == "IKO" && 
+               card_foreign_entry.language.as_deref() == Some("Japanese") {
+                if let Some(ref name) = card_foreign_entry.name {
+                    card_foreign_entry.name = Some(name.split(" //").next().unwrap_or(name).to_string());
+                }
+            }
+        }
+
+        // Set text fields
+        card_foreign_entry.text = actual_card_data.get("printed_text")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+            
+        card_foreign_entry.flavor_text = actual_card_data.get("flavor_text")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+            
+        card_foreign_entry.type_ = actual_card_data.get("printed_type_line")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        // Only add if we have a name
+        if card_foreign_entry.name.is_some() {
+            card_foreign_entries.push(card_foreign_entry);
+        }
+    }
+
     card_foreign_entries
 }
 
@@ -222,16 +339,43 @@ pub fn get_card_cmc(mana_cost: &str) -> f64 {
 
 /// Parse printings from Scryfall prints URL
 pub fn parse_printings(sf_prints_url: Option<&str>) -> Vec<String> {
-    let card_sets = HashSet::new();
-    
-    if let Some(url) = sf_prints_url {
-        // TODO: Implement actual Scryfall API calls
-        // This is a placeholder implementation
-        println!("Parsing printings from URL: {}", url);
+    let mut card_sets = HashSet::new();
+    let mut current_url = sf_prints_url.map(|s| s.to_string());
+
+    while let Some(url) = current_url {
+        // Download JSON from Scryfall API
+        let prints_api_json = download_scryfall_page(&url);
         
-        // For now, return empty vector
+        if let Some(object_type) = prints_api_json.get("object").and_then(|v| v.as_str()) {
+            if object_type == "error" {
+                eprintln!("Bad download: {}", url);
+                break;
+            }
+        }
+
+        // Extract set codes from the data array
+        if let Some(data_array) = prints_api_json.get("data").and_then(|v| v.as_array()) {
+            for card in data_array {
+                if let Some(set_code) = card.get("set").and_then(|v| v.as_str()) {
+                    card_sets.insert(set_code.to_uppercase());
+                }
+            }
+        }
+
+        // Check for pagination
+        let has_more = prints_api_json.get("has_more")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+            
+        if !has_more {
+            break;
+        }
+
+        current_url = prints_api_json.get("next_page")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
     }
-    
+
     let mut result: Vec<String> = card_sets.into_iter().collect();
     result.sort();
     result
@@ -266,19 +410,69 @@ pub fn parse_legalities(sf_card_legalities: &HashMap<String, String>) -> Mtgjson
 
 /// Parse rulings from Scryfall URL
 pub fn parse_rulings(rulings_url: &str) -> Vec<MtgjsonRulingObject> {
-    let mtgjson_rules = Vec::new();
+    let mut mtgjson_rules = Vec::new();
     
-    // TODO: Implement actual Scryfall API call
-    println!("Parsing rulings from URL: {}", rulings_url);
+    // Download JSON from Scryfall API
+    let rules_api_json = download_scryfall_page(rulings_url);
     
+    if let Some(object_type) = rules_api_json.get("object").and_then(|v| v.as_str()) {
+        if object_type == "error" {
+            eprintln!("Error downloading URL {}: {:?}", rulings_url, rules_api_json);
+            return mtgjson_rules;
+        }
+    }
+
+    // Process the rulings data
+    if let Some(data_array) = rules_api_json.get("data").and_then(|v| v.as_array()) {
+        for sf_rule in data_array {
+            let date = sf_rule.get("published_at")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_default();
+                
+            let comment = sf_rule.get("comment")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_default();
+
+            let mtgjson_rule = MtgjsonRulingObject::new(date, comment);
+            mtgjson_rules.push(mtgjson_rule);
+        }
+    }
+
+    // Sort rulings by date and text like the Python version
+    mtgjson_rules.sort_by(|a, b| {
+        a.date.cmp(&b.date).then_with(|| a.text.cmp(&b.text))
+    });
+
+    mtgjson_rules
+}
+
+// Helper functions for Scryfall API integration
+fn download_scryfall_page(url: &str) -> serde_json::Value {
+    // This would implement actual HTTP requests to Scryfall API
+    // For now, return a mock structure to demonstrate the API
+    use serde_json::json;
+    
+    println!("Downloading from Scryfall: {}", url);
+    
+    // Mock response structure - in real implementation this would be an HTTP client
+    json!({
+        "object": "list",
+        "data": [],
+        "has_more": false,
+        "next_page": null
+    })
+}
+
+fn download_scryfall_all_pages(url: &str) -> Vec<serde_json::Value> {
+    // This would implement paginated downloads from Scryfall API
     // For now, return empty vector as placeholder
     
-    // Sort rulings by date and text - TODO: implement after actual data loading
-    // mtgjson_rules.sort_by(|a, b| {
-    //     a.date.cmp(&b.date).then_with(|| a.text.cmp(&b.text))
-    // });
+    println!("Downloading all pages from Scryfall: {}", url);
     
-    mtgjson_rules
+    // Mock implementation - in real version this would paginate through all results
+    Vec::new()
 }
 
 /// Add UUID to MTGJSON objects (placeholder implementation)
