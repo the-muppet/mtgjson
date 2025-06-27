@@ -93,6 +93,15 @@ impl BaseProvider {
         }
     }
     
+    /// Make an HTTP GET request (alias for get_request)
+    pub async fn get(
+        &self,
+        url: &str,
+        params: Option<HashMap<String, String>>,
+    ) -> ProviderResult<Response> {
+        self.get_request(url, params).await
+    }
+    
     /// Make an HTTP GET request
     pub async fn get_request(
         &self,
@@ -155,7 +164,7 @@ impl BaseProvider {
 
 /// Rate limiter for API calls
 pub struct RateLimiter {
-    last_call: std::sync::Mutex<DateTime<Utc>>,
+    last_call: tokio::sync::Mutex<DateTime<Utc>>,
     min_interval: chrono::Duration,
 }
 
@@ -163,21 +172,22 @@ impl RateLimiter {
     pub fn new(calls_per_second: f64) -> Self {
         let min_interval = chrono::Duration::milliseconds((1000.0 / calls_per_second) as i64);
         Self {
-            last_call: std::sync::Mutex::new(DateTime::UNIX_EPOCH),
+            last_call: tokio::sync::Mutex::new(DateTime::UNIX_EPOCH),
             min_interval,
         }
     }
     
     pub async fn wait_if_needed(&self) {
         let now = Utc::now();
-        let mut last_call = self.last_call.lock().unwrap();
+        let mut last_call = self.last_call.lock().await;
         
         let elapsed = now - *last_call;
         if elapsed < self.min_interval {
             let wait_time = self.min_interval - elapsed;
+            drop(last_call);
             tokio::time::sleep(wait_time.to_std().unwrap_or(std::time::Duration::from_millis(100))).await;
         }
         
-        *last_call = Utc::now();
+        *self.last_call.lock().await = Utc::now();
     }
 }

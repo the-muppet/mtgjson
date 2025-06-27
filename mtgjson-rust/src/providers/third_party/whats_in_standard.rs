@@ -4,7 +4,7 @@ use reqwest::Response;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use chrono::{DateTime, Utc};
-use crate::prices::MtgjsonPricesObject;
+use crate::classes::prices::MtgjsonPricesObject;
 use crate::providers::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
 
 #[pyclass(name = "WhatsInStandardProvider")]
@@ -34,7 +34,7 @@ impl WhatsInStandardProvider {
         // Initialize set codes
         let runtime = tokio::runtime::Runtime::new()?;
         provider.set_codes = runtime.block_on(async {
-            provider.standard_legal_set_codes().await
+            provider.standard_legal_set_codes_async().await
         }).unwrap_or_default();
         
         Ok(provider)
@@ -56,9 +56,10 @@ impl WhatsInStandardProvider {
         }
         
         let api_response = self.download(Self::API_ENDPOINT, None).await?;
+        let empty_vec = vec![];
         let sets = api_response.get("sets")
             .and_then(|v| v.as_array())
-            .unwrap_or(&vec![]);
+            .unwrap_or(&empty_vec);
         
         let now = Utc::now();
         let mut standard_set_codes = HashSet::new();
@@ -149,7 +150,7 @@ impl AbstractProvider for WhatsInStandardProvider {
         _third_party_to_mtgjson: &HashMap<String, HashSet<String>>,
         _price_data_rows: &[Value],
         _card_platform_id_key: &str,
-        _default_prices_object: &MtgjsonPrices,
+        _default_prices_object: &MtgjsonPricesObject,
         _foil_key: &str,
         _retail_key: Option<&str>,
         _retail_quantity_key: Option<&str>,
@@ -157,7 +158,7 @@ impl AbstractProvider for WhatsInStandardProvider {
         _buy_quantity_key: Option<&str>,
         _etched_key: Option<&str>,
         _etched_value: Option<&str>,
-    ) -> HashMap<String, MtgjsonPrices> {
+    ) -> HashMap<String, MtgjsonPricesObject> {
         HashMap::new()
     }
 }

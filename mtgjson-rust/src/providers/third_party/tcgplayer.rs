@@ -3,8 +3,8 @@ use pyo3::prelude::*;
 use reqwest::Response;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use crate::prices::MtgjsonPricesObject;
-use crate::sealed_product::MtgjsonSealedProductObject;
+use crate::classes::prices::MtgjsonPricesObject;
+use crate::classes::sealed_product::MtgjsonSealedProductObject;
 use crate::providers::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
 
 #[pyclass(name = "TCGPlayerProvider")]
@@ -25,7 +25,7 @@ impl TCGPlayerProvider {
     }
     
     /// Generate today's price dictionary
-    pub fn generate_today_price_dict(&self, all_printings_path: &str) -> PyResult<HashMap<String, MtgjsonPrices>> {
+    pub fn generate_today_price_dict(&self, all_printings_path: &str) -> PyResult<HashMap<String, MtgjsonPricesObject>> {
         let runtime = tokio::runtime::Runtime::new()?;
         runtime.block_on(async {
             self.generate_today_price_dict_async(all_printings_path).await
@@ -34,7 +34,7 @@ impl TCGPlayerProvider {
     
     /// Update sealed URLs for sealed products
     #[staticmethod]
-    pub fn update_sealed_urls(sealed_products: &mut Vec<MtgjsonSealedProduct>) {
+    pub fn update_sealed_urls(sealed_products: &mut Vec<MtgjsonSealedProductObject>) {
         let product_url = "https://partner.tcgplayer.com/c/4948039/1780961/21018?subId1=api&u=https%3A%2F%2Fwww.tcgplayer.com%2Fproduct%2F{}%3Fpage%3D1";
         
         for sealed_product in sealed_products {
@@ -63,7 +63,7 @@ impl TCGPlayerProvider {
 }
 
 impl TCGPlayerProvider {
-    async fn generate_today_price_dict_async(&self, _all_printings_path: &str) -> ProviderResult<HashMap<String, MtgjsonPrices>> {
+    async fn generate_today_price_dict_async(&self, _all_printings_path: &str) -> ProviderResult<HashMap<String, MtgjsonPricesObject>> {
         // Placeholder implementation
         Ok(HashMap::new())
     }
@@ -77,9 +77,10 @@ impl TCGPlayerProvider {
             let params = Some([("offset".to_string(), api_offset.to_string())].iter().cloned().collect());
             
             let response = self.download(&url, params).await?;
+            let empty_vec = vec![];
             let results = response.get("results")
                 .and_then(|v| v.as_array())
-                .unwrap_or(&vec![]);
+                .unwrap_or(&empty_vec);
             
             if results.is_empty() {
                 break;
@@ -115,9 +116,10 @@ impl TCGPlayerProvider {
             ].iter().cloned().collect());
             
             let response = self.download(url, params).await?;
+            let empty_vec2 = vec![];
             let results = response.get("results")
                 .and_then(|v| v.as_array())
-                .unwrap_or(&vec![]);
+                .unwrap_or(&empty_vec2);
             
             if results.is_empty() {
                 break;
@@ -164,7 +166,7 @@ impl AbstractProvider for TCGPlayerProvider {
         _third_party_to_mtgjson: &HashMap<String, HashSet<String>>,
         _price_data_rows: &[Value],
         _card_platform_id_key: &str,
-        _default_prices_object: &MtgjsonPrices,
+        _default_prices_object: &MtgjsonPricesObject,
         _foil_key: &str,
         _retail_key: Option<&str>,
         _retail_quantity_key: Option<&str>,
@@ -172,7 +174,7 @@ impl AbstractProvider for TCGPlayerProvider {
         _buy_quantity_key: Option<&str>,
         _etched_key: Option<&str>,
         _etched_value: Option<&str>,
-    ) -> HashMap<String, MtgjsonPrices> {
+    ) -> HashMap<String, MtgjsonPricesObject> {
         HashMap::new()
     }
 }

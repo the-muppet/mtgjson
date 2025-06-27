@@ -12,6 +12,10 @@ pub enum ProviderError {
     AuthError(String),
     #[error("Rate limit exceeded")]
     RateLimitError,
+    #[error("Configuration error: {0}")]
+    ConfigurationError(String),
+    #[error("Processing error: {0}")]
+    ProcessingError(String),
 }
 
 /// Result type for provider operations
@@ -50,6 +54,20 @@ pub use github::sealed::GitHubSealedProvider;
 pub use mtgwiki::secret_lair::MtgWikiProviderSecretLair;
 pub use scryfall::monolith::ScryfallProvider;
 pub use scryfall::orientation_detector::ScryfallProviderOrientationDetector;
+
+/// Convert ProviderError to PyErr for PyO3 compatibility
+impl From<ProviderError> for pyo3::PyErr {
+    fn from(err: ProviderError) -> Self {
+        match err {
+            ProviderError::NetworkError(msg) => pyo3::exceptions::PyConnectionError::new_err(msg),
+            ProviderError::ParseError(msg) => pyo3::exceptions::PyValueError::new_err(msg),
+            ProviderError::AuthError(msg) => pyo3::exceptions::PyPermissionError::new_err(msg),
+            ProviderError::RateLimitError => pyo3::exceptions::PyRuntimeError::new_err("Rate limit exceeded"),
+            ProviderError::ConfigurationError(msg) => pyo3::exceptions::PyRuntimeError::new_err(msg),
+            ProviderError::ProcessingError(msg) => pyo3::exceptions::PyRuntimeError::new_err(msg),
+        }
+    }
+}
 
 /// Add all provider classes to Python module
 pub fn add_provider_classes_to_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
