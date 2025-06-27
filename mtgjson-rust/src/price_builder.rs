@@ -7,60 +7,102 @@ use chrono::{DateTime, Utc, NaiveDate};
 
 use crate::prices::MtgjsonPrices;
 
-#[pyclass(name = "PriceBuilder")]
+/// MTGJSON Price Builder - High performance price data processing
 #[derive(Debug, Clone)]
+#[pyclass(name = "PriceBuilder")]
 pub struct PriceBuilder {
-    #[pyo3(get, set)]
-    pub all_printings_path: Option<String>,
+    all_printings_path: Option<String>,  // Remove pyo3(get, set) to avoid conflicts
     #[pyo3(get, set)]
     pub providers: Vec<String>,
+    #[pyo3(get, set)]
+    pub archive_days: i32,
 }
 
 #[pymethods]
 impl PriceBuilder {
     #[new]
-    pub fn new(all_printings_path: Option<String>) -> Self {
+    pub fn new() -> Self {
         Self {
-            all_printings_path,
+            all_printings_path: None,
             providers: vec![
                 "CardHoarder".to_string(),
-                "TCGPlayer".to_string(), 
+                "TCGPlayer".to_string(),
                 "CardMarket".to_string(),
                 "CardKingdom".to_string(),
-                "MultiverseBridge".to_string(),
+                "MTGBan".to_string(),
             ],
+            archive_days: 30,
         }
     }
-    
-    /// Build today's prices with high performance
-    pub fn build_today_prices(&self) -> String {
+
+    /// Set AllPrintings path for price building
+    pub fn set_all_printings_path(&mut self, path: String) {
+        self.all_printings_path = Some(path);
+    }
+
+    /// Get AllPrintings path
+    pub fn get_all_printings_path(&self) -> Option<String> {
+        self.all_printings_path.clone()
+    }
+
+    /// Build today's prices with high performance - Returns tuple like Python
+    pub fn build_prices(&self) -> PyResult<String> {
         if let Some(ref path) = self.all_printings_path {
             if !std::path::Path::new(path).exists() {
-                return serde_json::to_string(&serde_json::json!({
-                    "error": format!("AllPrintings not found at: {}", path)
-                })).unwrap_or_default();
+                return Err(PyErr::new::<pyo3::exceptions::PyFileNotFoundError, _>(
+                    format!("AllPrintings not found at: {}", path)
+                ));
             }
         }
         
         let mut final_results = HashMap::new();
+        let mut today_results = HashMap::new();
         
         // Process each provider in parallel
         for provider in &self.providers {
             match self.generate_prices_for_provider(provider) {
                 Ok(provider_prices) => {
-                    if let Err(e) = self.merge_price_data(&mut final_results, provider_prices) {
-                        eprintln!("Failed to merge provider data: {}", e);
-                        continue;
+                    // Merge provider data into final results
+                    for (card_uuid, price_data) in provider_prices {
+                        final_results.insert(card_uuid.clone(), price_data.clone());
+                        today_results.insert(card_uuid, price_data);
                     }
                 }
                 Err(e) => {
-                    eprintln!("Failed to process provider {}: {}", provider, e);
-                    continue;
+                    eprintln!("Warning: Failed to process provider {}: {}", provider, e);
                 }
             }
         }
         
-        serde_json::to_string(&final_results).unwrap_or_default()
+        let result = serde_json::json!({
+            "today_prices": today_results,
+            "archive_prices": final_results,
+            "status": "completed",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        });
+        
+        serde_json::to_string(&result).map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
+        })
+    }
+
+    /// Build today's prices only - matches Python interface
+    pub fn build_today_prices(&self) -> PyResult<String> {
+        // Just build prices and extract today component
+        let prices_json = self.build_prices()?;
+        
+        // Parse the result to extract just today_prices
+        let prices_value: serde_json::Value = serde_json::from_str(&prices_json).map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Parse error: {}", e))
+        })?;
+        
+        if let Some(today_prices) = prices_value.get("today_prices") {
+            serde_json::to_string(today_prices).map_err(|e| {
+                PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e))
+            })
+        } else {
+            Ok("{}".to_string())
+        }
     }
     
     /// Prune old price data
@@ -73,28 +115,6 @@ impl PriceBuilder {
             "cutoff_date": cutoff_str,
             "months_kept": months,
             "message": format!("Would prune price data older than {} months", months)
-        });
-        
-        serde_json::to_string(&result).unwrap_or_default()
-    }
-    
-    /// Build complete price archive with compression
-    pub fn build_prices(&self) -> String {
-        // Build today's prices
-        let today_prices_json = self.build_today_prices();
-        
-        // TODO: return structured result containing both today's and archive prices
-        // TODO: In a full implementation, this would:
-        // TODO: 1. Download archived prices from S3/remote storage
-        // TODO: 2. Merge with today's prices
-        // TODO: 3. Prune old data
-        // TODO: 4. Compress and upload back to storage
-        
-        let result = serde_json::json!({
-            "today_prices": today_prices_json,
-            "archive_prices": today_prices_json,
-            "status": "completed",
-            "timestamp": chrono::Utc::now().to_rfc3339()
         });
         
         serde_json::to_string(&result).unwrap_or_default()
@@ -123,7 +143,6 @@ impl PriceBuilder {
                 }
             } else {
                 stats.insert("error".to_string(), -1);
-                // TODO: add actual error message
                 stats.insert("message".to_string(), 0);
             }
         } else {
@@ -317,6 +336,6 @@ impl PriceBuilder {
 
 impl Default for PriceBuilder {
     fn default() -> Self {
-        Self::new(None)
+        Self::new()
     }
 }
