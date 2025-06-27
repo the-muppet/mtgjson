@@ -12,6 +12,15 @@ use chrono;
 use crate::compiled_classes::*;
 use crate::meta::MtgjsonMetaObject;
 
+#[derive(Debug, Clone)]
+pub struct OutputMetadata {
+    pub file_name: String,
+    pub file_size: usize,
+    pub sha256_hash: String,
+    pub generated_at: String,
+    pub version: String,
+}
+
 #[pyclass(name = "OutputGenerator")]
 #[derive(Debug, Clone)]
 pub struct OutputGenerator {

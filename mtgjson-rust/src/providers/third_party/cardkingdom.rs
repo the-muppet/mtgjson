@@ -42,7 +42,7 @@ impl CardKingdomProvider {
     }
     
     /// Generate today's price dictionary
-    pub fn generate_today_price_dict(&self, all_printings_path: &str) -> PyResult<HashMap<String, MtgjsonPrices>> {
+    pub fn generate_today_price_dict(&self, all_printings_path: &str) -> PyResult<HashMap<String, MtgjsonPricesObject>> {
         let runtime = tokio::runtime::Runtime::new()?;
         runtime.block_on(async {
             self.generate_today_price_dict_async(all_printings_path).await
@@ -50,7 +50,7 @@ impl CardKingdomProvider {
     }
     
     /// Update sealed URLs for sealed products
-    pub fn update_sealed_urls(&self, sealed_products: &mut Vec<MtgjsonSealedProduct>) -> PyResult<()> {
+    pub fn update_sealed_urls(&self, sealed_products: &mut Vec<MtgjsonSealedProductObject>) -> PyResult<()> {
         let runtime = tokio::runtime::Runtime::new()?;
         runtime.block_on(async {
             self.update_sealed_urls_async(sealed_products).await
@@ -60,7 +60,7 @@ impl CardKingdomProvider {
 
 impl CardKingdomProvider {
     /// Generate today's price dictionary (async version)
-    async fn generate_today_price_dict_async(&self, all_printings_path: &str) -> ProviderResult<HashMap<String, MtgjsonPrices>> {
+    async fn generate_today_price_dict_async(&self, all_printings_path: &str) -> ProviderResult<HashMap<String, MtgjsonPricesObject>> {
         let api_response = self.download(Self::API_URL, None).await?;
         let price_data_rows = api_response.get("data")
             .and_then(|v| v.as_array())
@@ -90,7 +90,7 @@ impl CardKingdomProvider {
         ).await?;
         card_kingdom_id_to_mtgjson.extend(etched_mapping);
         
-        let default_prices_obj = MtgjsonPrices {
+        let default_prices_obj = MtgjsonPricesObject {
             currency: "USD".to_string(),
             date: self.today_date(),
             provider: "cardkingdom".to_string(),
@@ -120,7 +120,7 @@ impl CardKingdomProvider {
     }
     
     /// Update sealed URLs (async version)
-    async fn update_sealed_urls_async(&self, sealed_products: &mut Vec<MtgjsonSealedProduct>) -> ProviderResult<()> {
+    async fn update_sealed_urls_async(&self, sealed_products: &mut Vec<MtgjsonSealedProductObject>) -> ProviderResult<()> {
         let api_data = self.download(Self::SEALED_URL, None).await?;
         
         for product in sealed_products {
@@ -204,7 +204,7 @@ impl AbstractProvider for CardKingdomProvider {
         third_party_to_mtgjson: &HashMap<String, HashSet<String>>,
         price_data_rows: &[Value],
         card_platform_id_key: &str,
-        default_prices_object: &MtgjsonPrices,
+        default_prices_object: &MtgjsonPricesObject,
         foil_key: &str,
         retail_key: Option<&str>,
         retail_quantity_key: Option<&str>,
@@ -212,8 +212,8 @@ impl AbstractProvider for CardKingdomProvider {
         buy_quantity_key: Option<&str>,
         etched_key: Option<&str>,
         etched_value: Option<&str>,
-    ) -> HashMap<String, MtgjsonPrices> {
-        let mut today_dict: HashMap<String, MtgjsonPrices> = HashMap::new();
+    ) -> HashMap<String, MtgjsonPricesObject> {
+        let mut today_dict: HashMap<String, MtgjsonPricesObject> = HashMap::new();
         
         for data_row in price_data_rows {
             let third_party_id = data_row.get(card_platform_id_key)
