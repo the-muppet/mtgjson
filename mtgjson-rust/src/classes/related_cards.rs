@@ -1,4 +1,4 @@
-use crate::base::{skip_if_empty_vec, JsonObject};
+use crate::classes::base::{skip_if_empty_vec, JsonObject};
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;

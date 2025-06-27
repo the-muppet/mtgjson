@@ -29,10 +29,8 @@ mod classes;
 mod compiled_classes;
 // Providers
 mod providers;
-// High-computational modules
-mod output_generator;
-mod parallel_call;
-mod price_builder;
+// High-computational modules (from artifacts directory)
+mod artifacts;
 mod set_builder;
 // Wrapper module for set_builder functions
 mod set_builder_functions;
@@ -69,9 +67,9 @@ use compiled_classes::{
 };
 
 // Re-export for tests and external usage  
-pub use output_generator::OutputGenerator;
-pub use price_builder::PriceBuilder;
-pub use parallel_call::{ParallelProcessor, ParallelIterator};
+pub use artifacts::output_generator::OutputGenerator;
+pub use artifacts::price_builder::PriceBuilder;
+pub use artifacts::parallel_call::{ParallelProcessor, ParallelIterator};
 pub use set_builder_functions::*;
 pub use providers::*;
 
@@ -117,10 +115,10 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<MtgjsonTcgplayerSkusObject>()?;
     
     // Add high-performance classes
-    m.add_class::<output_generator::OutputGenerator>()?;
-    m.add_class::<price_builder::PriceBuilder>()?;
-    m.add_class::<parallel_call::ParallelProcessor>()?;
-    m.add_class::<parallel_call::ParallelIterator>()?;
+    m.add_class::<artifacts::output_generator::OutputGenerator>()?;
+    m.add_class::<artifacts::price_builder::PriceBuilder>()?;
+    m.add_class::<artifacts::parallel_call::ParallelProcessor>()?;
+    m.add_class::<artifacts::parallel_call::ParallelIterator>()?;
     
     // Add set_builder module functions
     m.add_function(wrap_pyfunction!(set_builder_functions::parse_card_types, m)?)?;

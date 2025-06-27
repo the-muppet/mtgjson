@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use reqwest::Response;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use crate::prices::MtgjsonPrices;
+use crate::classes::prices::MtgjsonPricesObject;
 use super::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
 
 #[pyclass(name = "CardHoarderProvider")]
@@ -24,7 +24,7 @@ impl CardHoarderProvider {
     }
     
     /// Generate today's price dictionary for MTGO
-    pub fn generate_today_price_dict(&self, all_printings_path: &str) -> PyResult<HashMap<String, MtgjsonPrices>> {
+    pub fn generate_today_price_dict(&self, all_printings_path: &str) -> PyResult<HashMap<String, MtgjsonPricesObject>> {
         let runtime = tokio::runtime::Runtime::new()?;
         runtime.block_on(async {
             self.generate_today_price_dict_async(all_printings_path).await

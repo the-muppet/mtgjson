@@ -1,10 +1,11 @@
 use async_trait::async_trait;
 use pyo3::prelude::*;
+use pyo3::types::PyList;
 use reqwest::Response;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use tokio::time::{sleep, Duration};
-use crate::prices::MtgjsonPrices;
+use crate::classes::prices::MtgjsonPricesObject;
 use super::{super::{AbstractProvider, BaseProvider, RateLimiter, ProviderError, ProviderResult}, sf_utils};
 
 #[pyclass(name = "ScryfallProvider")]

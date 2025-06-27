@@ -9,7 +9,7 @@ use std::fmt;
 use crate::classes::MtgjsonPricesObject;
 
 // Module declarations
-pub mod abstract;
+pub mod r#abstract;
 pub mod cardmarket;
 pub mod edhrec;
 pub mod github;
@@ -18,11 +18,10 @@ pub mod scryfall;
 pub mod third_party;
 
 // Re-exports from modules
-pub use abstract::AbstractProvider;
-pub use cardmarket::CardMarketProvider;
+pub use r#abstract::AbstractProvider;
 pub use edhrec::EdhrecProvider;
 pub use mtgwiki::MtgWikiProvider;
-pub use scryfall::{ScryfallProvider, ScryfallProviderOrientationDetector, ScryfallProviderSetLanguageDetector};
+pub use scryfall::{ScryfallProvider, ScryfallProviderOrientationDetector};
 pub use github::{
     GithubBoostersProvider, 
     GithubCardSealedProvider, 
@@ -127,7 +126,6 @@ pub fn providers(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Add all provider classes
     m.add_class::<CardHoarderProvider>()?;
     m.add_class::<CardKingdomProvider>()?;
-    m.add_class::<CardMarketProvider>()?;
     m.add_class::<EdhrecProvider>()?;
     m.add_class::<GathererProvider>()?;
     m.add_class::<GithubBoostersProvider>()?;

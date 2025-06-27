@@ -1,7 +1,7 @@
 use chrono::Utc;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::base::JsonObject;
+use crate::classes::base::JsonObject;
 use std::collections::HashSet;
 
 /// MTGJSON Meta Object

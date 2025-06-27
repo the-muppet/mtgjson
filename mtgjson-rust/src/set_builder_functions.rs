@@ -2,10 +2,10 @@
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use crate::set_builder;
-use crate::legalities::MtgjsonLegalitiesObject;
-use crate::set::MtgjsonSetObject;
-use crate::foreign_data::MtgjsonForeignDataObject;
-use crate::rulings::MtgjsonRulingObject;
+use crate::classes::legalities::MtgjsonLegalitiesObject;
+use crate::classes::set::MtgjsonSetObject;
+use crate::classes::foreign_data::MtgjsonForeignDataObject;
+use crate::classes::rulings::MtgjsonRulingObject;
 
 /// Parse card type line into super types, types, and subtypes
 #[pyfunction]
@@ -69,13 +69,13 @@ pub fn parse_rulings(rulings_url: &str) -> Vec<MtgjsonRulingObject> {
 
 /// Add leadership skills to a card
 #[pyfunction]
-pub fn add_leadership_skills(mtgjson_card: &mut crate::card::MtgjsonCardObject) {
+pub fn add_leadership_skills(mtgjson_card: &mut crate::classes::card::MtgjsonCardObject) {
     set_builder::add_leadership_skills(mtgjson_card)
 }
 
 /// Mark duel deck assignments for cards
 #[pyfunction]
-pub fn mark_duel_decks(set_code: &str, mut mtgjson_cards: Vec<crate::card::MtgjsonCardObject>) -> Vec<crate::card::MtgjsonCardObject> {
+pub fn mark_duel_decks(set_code: &str, mut mtgjson_cards: Vec<crate::classes::card::MtgjsonCardObject>) -> Vec<crate::classes::card::MtgjsonCardObject> {
     set_builder::mark_duel_decks(set_code, &mut mtgjson_cards);
     mtgjson_cards
 }

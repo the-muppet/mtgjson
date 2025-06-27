@@ -1,7 +1,7 @@
-use crate::base::{skip_if_empty_optional_string, skip_if_empty_vec, JsonObject};
-use crate::card::MtgjsonCardObject;
-use crate::sealed_product::MtgjsonSealedProductObject;
-use crate::utils::MtgjsonUtils;
+use crate::classes::base::{skip_if_empty_optional_string, skip_if_empty_vec, JsonObject};
+use crate::classes::card::MtgjsonCardObject;
+use crate::classes::sealed_product::MtgjsonSealedProductObject;
+use crate::classes::utils::MtgjsonUtils;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};

@@ -1,5 +1,5 @@
-use crate::base::{skip_if_empty_optional_string, JsonObject};
-use crate::identifiers::MtgjsonIdentifiersObject;
+use crate::classes::base::{skip_if_empty_optional_string, JsonObject};
+use crate::classes::identifiers::MtgjsonIdentifiersObject;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};

@@ -1,4 +1,4 @@
-use crate::base::JsonObject;
+use crate::classes::base::JsonObject;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize, Deserializer};
 use serde::de::{self, Visitor};

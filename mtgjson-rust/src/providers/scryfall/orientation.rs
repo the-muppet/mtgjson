@@ -4,7 +4,7 @@ use reqwest::Response;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use scraper::{Html, Selector};
-use crate::prices::MtgjsonPrices;
+use crate::classes::prices::MtgjsonPricesObject;
 use super::{super::{AbstractProvider, BaseProvider, ProviderError, ProviderResult}, sf_utils};
 
 #[pyclass(name = "ScryfallProviderOrientationDetector")]

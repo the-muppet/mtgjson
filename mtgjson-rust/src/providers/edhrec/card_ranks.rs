@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use reqwest::Response;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use crate::prices::MtgjsonPrices;
+use crate::classes::prices::MtgjsonPricesObject;
 use super::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
 
 #[pyclass(name = "EdhrecProvider")]
