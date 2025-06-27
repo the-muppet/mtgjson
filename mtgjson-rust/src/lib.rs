@@ -78,12 +78,12 @@ use compiled_classes::{
     MtgjsonSetList, MtgjsonTcgplayerSkus
 };
 
-// Import providers
+// Import providers with correct names
 use providers::{
-    CardHoarderProvider, CardKingdomProvider, CardMarketProvider, EdhrecProvider,
+    CardHoarderProvider, CardKingdomProvider, CardMarketProvider, EdhrecProviderCardRanks,
     GathererProvider, GitHubBoostersProvider, GitHubCardSealedProductsProvider,
     GitHubDecksProvider, GitHubMTGSqliteProvider, GitHubSealedProvider,
-    MTGBanProvider, MtgWikiProvider, MultiverseBridgeProvider,
+    MTGBanProvider, MtgWikiProviderSecretLair, MultiverseBridgeProvider,
     ScryfallProvider, TCGPlayerProvider, WhatsInStandardProvider, WizardsProvider
 };
 
@@ -139,11 +139,11 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<parallel_call::ParallelProcessor>()?;
     m.add_class::<parallel_call::ParallelIterator>()?;
     
-    // Add all provider classes
+    // Add all provider classes with correct names
     m.add_class::<CardHoarderProvider>()?;
     m.add_class::<CardKingdomProvider>()?;
     m.add_class::<CardMarketProvider>()?;
-    m.add_class::<EdhrecProvider>()?;
+    m.add_class::<EdhrecProviderCardRanks>()?;
     m.add_class::<GathererProvider>()?;
     m.add_class::<GitHubBoostersProvider>()?;
     m.add_class::<GitHubCardSealedProductsProvider>()?;
@@ -151,7 +151,7 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<GitHubMTGSqliteProvider>()?;
     m.add_class::<GitHubSealedProvider>()?;
     m.add_class::<MTGBanProvider>()?;
-    m.add_class::<MtgWikiProvider>()?;
+    m.add_class::<MtgWikiProviderSecretLair>()?;
     m.add_class::<MultiverseBridgeProvider>()?;
     m.add_class::<ScryfallProvider>()?;
     m.add_class::<TCGPlayerProvider>()?;
