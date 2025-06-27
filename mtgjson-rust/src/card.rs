@@ -699,12 +699,19 @@ impl PartialOrd for MtgjsonCard {
             return Some(self_number_clean_int.cmp(&other_number_clean_int));
         }
 
+        // Case 4: Neither is pure digit
+        // First check if digit strings are identical
+        if self_number_clean == other_number_clean {
+            if self_side.is_empty() && other_side.is_empty() {
+                return Some(self.number.cmp(&other.number));
+            }
+            return Some(self_side.cmp(other_side));
+        }
+
+        // Then check if integer values are the same but digit strings differ
         if self_number_clean_int == other_number_clean_int {
             if self_number_clean.len() != other_number_clean.len() {
                 return Some(self_number_clean.len().cmp(&other_number_clean.len()));
-            }
-            if self_side.is_empty() && other_side.is_empty() {
-                return Some(self.number.cmp(&other.number));
             }
             return Some(self_side.cmp(other_side));
         }
