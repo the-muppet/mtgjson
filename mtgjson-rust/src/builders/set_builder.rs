@@ -1,9 +1,11 @@
-THIS SHOULD BE A LINTER ERRORuse crate::classes::{
+use crate::classes::{
     JsonObject, MtgjsonCardObject, MtgjsonDeckObject, MtgjsonForeignDataObject,
-    MtgjsonGameFormatsObject, MtgjsonLeadershipSkillsObject, MtgjsonLegalitiesObject,
-    MtgjsonMetaObject, MtgjsonRelatedCardsObject, MtgjsonRulingObject, 
-    MtgjsonSealedProductObject, MtgjsonSetObject, MtgjsonTranslations
+    MtgjsonGameFormatsObject, MtgjsonIdentifiers, MtgjsonLeadershipSkillsObject, 
+    MtgjsonLegalitiesObject, MtgjsonMetaObject, MtgjsonRelatedCardsObject, 
+    MtgjsonRulingObject, MtgjsonSealedProductObject, MtgjsonSetObject, 
+    MtgjsonTranslations
 };
+use crate::providers::scryfall::ScryfallProvider;
 
 use chrono::{DateTime, Utc};
 use pyo3::prelude::*;
@@ -75,30 +77,37 @@ impl Constants {
     }
 }
 
-/// Parse foreign card data from Scryfall prints URL
-pub fn parse_foreign(
+/// Parse foreign card data from Scryfall prints URL (async implementation)
+pub async fn parse_foreign_async(
     sf_prints_url: &str,
     card_name: &str,
     card_number: &str,
     set_name: &str,
-) -> Vec<MtgjsonForeignDataObject> {
+) -> Result<Vec<MtgjsonForeignDataObject>, Box<dyn std::error::Error>> {
     let mut card_foreign_entries = Vec::new();
     
     // Add information to get all languages
     let modified_url = sf_prints_url.replace("&unique=prints", "+lang%3Aany&unique=prints");
     
-    // Download all pages from Scryfall API
-    // TODO: This would need ScryfallProvider integration - for now simulate the logic
-    let prints_api_json = download_scryfall_all_pages(&modified_url);
+    // Create Scryfall provider and download all pages
+    let provider = ScryfallProvider::new()?;
+    let prints_api_json = Python::with_gil(|py| {
+        provider.download_all_pages(py, &modified_url, None)
+    })?;
     
     if prints_api_json.is_empty() {
-        eprintln!("No data found for {}: {:?}", modified_url, prints_api_json);
-        return card_foreign_entries;
+        eprintln!("No data found for {}", modified_url);
+        return Ok(card_foreign_entries);
     }
 
     let constants = Constants::new();
     
-    for foreign_card in prints_api_json {
+    // Process each foreign card entry
+    for foreign_card_py in prints_api_json.iter() {
+        // Convert Python object to JSON Value for processing
+        let foreign_card_str = foreign_card_py.to_string();
+        let foreign_card: Value = serde_json::from_str(&foreign_card_str)?;
+        
         // Skip if wrong set, number, or English
         let card_set = foreign_card.get("set").and_then(|v| v.as_str()).unwrap_or("");
         let card_collector_number = foreign_card.get("collector_number").and_then(|v| v.as_str()).unwrap_or("");
@@ -187,7 +196,7 @@ pub fn parse_foreign(
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
 
-            // Special case for IKO Japanese cards
+            // Special case for IKO Japanese cards (https://github.com/mtgjson/mtgjson/issues/611)
             if set_name.to_uppercase() == "IKO" && 
                card_foreign_entry.language.as_deref() == Some("Japanese") {
                 if let Some(ref name) = card_foreign_entry.name {
@@ -215,7 +224,7 @@ pub fn parse_foreign(
         }
     }
 
-    card_foreign_entries
+    Ok(card_foreign_entries)
 }
 
 /// Parse card types into super types, types, and subtypes
@@ -337,48 +346,55 @@ pub fn get_card_cmc(mana_cost: &str) -> f64 {
     total
 }
 
-/// Parse printings from Scryfall prints URL
-pub fn parse_printings(sf_prints_url: Option<&str>) -> Vec<String> {
+/// Parse printings from Scryfall prints URL (async implementation)
+pub async fn parse_printings_async(sf_prints_url: Option<&str>) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let mut card_sets = HashSet::new();
-    let mut current_url = sf_prints_url.map(|s| s.to_string());
 
-    while let Some(url) = current_url {
-        // Download JSON from Scryfall API
-        let prints_api_json = download_scryfall_page(&url);
-        
-        if let Some(object_type) = prints_api_json.get("object").and_then(|v| v.as_str()) {
-            if object_type == "error" {
-                eprintln!("Bad download: {}", url);
+    if let Some(starting_url) = sf_prints_url {
+        let provider = ScryfallProvider::new()?;
+        let mut current_url = starting_url.to_string();
+
+        loop {
+            // Download JSON from Scryfall API using the provider
+            let params = None;
+            let prints_api_json = provider.download(&current_url, params).await?;
+            
+            if let Some(object_type) = prints_api_json.get("object").and_then(|v| v.as_str()) {
+                if object_type == "error" {
+                    eprintln!("Bad download: {}", current_url);
+                    break;
+                }
+            }
+
+            // Extract set codes from the data array
+            if let Some(data_array) = prints_api_json.get("data").and_then(|v| v.as_array()) {
+                for card in data_array {
+                    if let Some(set_code) = card.get("set").and_then(|v| v.as_str()) {
+                        card_sets.insert(set_code.to_uppercase());
+                    }
+                }
+            }
+
+            // Check for pagination
+            let has_more = prints_api_json.get("has_more")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+                
+            if !has_more {
+                break;
+            }
+
+            if let Some(next_page) = prints_api_json.get("next_page").and_then(|v| v.as_str()) {
+                current_url = next_page.to_string();
+            } else {
                 break;
             }
         }
-
-        // Extract set codes from the data array
-        if let Some(data_array) = prints_api_json.get("data").and_then(|v| v.as_array()) {
-            for card in data_array {
-                if let Some(set_code) = card.get("set").and_then(|v| v.as_str()) {
-                    card_sets.insert(set_code.to_uppercase());
-                }
-            }
-        }
-
-        // Check for pagination
-        let has_more = prints_api_json.get("has_more")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-            
-        if !has_more {
-            break;
-        }
-
-        current_url = prints_api_json.get("next_page")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
     }
 
     let mut result: Vec<String> = card_sets.into_iter().collect();
     result.sort();
-    result
+    Ok(result)
 }
 
 /// Parse legalities from Scryfall format to MTGJSON format
@@ -408,17 +424,18 @@ pub fn parse_legalities(sf_card_legalities: &HashMap<String, String>) -> Mtgjson
     card_legalities
 }
 
-/// Parse rulings from Scryfall URL
-pub fn parse_rulings(rulings_url: &str) -> Vec<MtgjsonRulingObject> {
+/// Parse rulings from Scryfall URL (async implementation)
+pub async fn parse_rulings_async(rulings_url: &str) -> Result<Vec<MtgjsonRulingObject>, Box<dyn std::error::Error>> {
     let mut mtgjson_rules = Vec::new();
     
-    // Download JSON from Scryfall API
-    let rules_api_json = download_scryfall_page(rulings_url);
+    // Download JSON from Scryfall API using the provider
+    let provider = ScryfallProvider::new()?;
+    let rules_api_json = provider.download(rulings_url, None).await?;
     
     if let Some(object_type) = rules_api_json.get("object").and_then(|v| v.as_str()) {
         if object_type == "error" {
             eprintln!("Error downloading URL {}: {:?}", rulings_url, rules_api_json);
-            return mtgjson_rules;
+            return Ok(mtgjson_rules);
         }
     }
 
@@ -445,34 +462,59 @@ pub fn parse_rulings(rulings_url: &str) -> Vec<MtgjsonRulingObject> {
         a.date.cmp(&b.date).then_with(|| a.text.cmp(&b.text))
     });
 
-    mtgjson_rules
+    Ok(mtgjson_rules)
 }
 
-// Helper functions for Scryfall API integration
-fn download_scryfall_page(url: &str) -> serde_json::Value {
-    // This would implement actual HTTP requests to Scryfall API
-    // For now, return a mock structure to demonstrate the API
-    use serde_json::json;
+/// Get Scryfall set data for a specific set (async implementation)
+pub async fn get_scryfall_set_data_async(set_code: &str) -> Result<Option<Value>, Box<dyn std::error::Error>> {
+    let provider = ScryfallProvider::new()?;
+    let url = format!("https://api.scryfall.com/sets/{}", set_code);
     
-    println!("Downloading from Scryfall: {}", url);
-    
-    // Mock response structure - in real implementation this would be an HTTP client
-    json!({
-        "object": "list",
-        "data": [],
-        "has_more": false,
-        "next_page": null
-    })
+    let set_data = provider.download(&url, None).await?;
+
+    if set_data.get("object").and_then(|v| v.as_str()) == Some("error") {
+        eprintln!("Failed to download {}", set_code);
+        return Ok(None);
+    }
+
+    Ok(Some(set_data))
 }
 
-fn download_scryfall_all_pages(url: &str) -> Vec<serde_json::Value> {
-    // This would implement paginated downloads from Scryfall API
-    // For now, return empty vector as placeholder
-    
-    println!("Downloading all pages from Scryfall: {}", url);
-    
-    // Mock implementation - in real version this would paginate through all results
-    Vec::new()
+/// Parse foreign card data from Scryfall prints URL (main public interface)
+pub fn parse_foreign(
+    sf_prints_url: &str,
+    card_name: &str,
+    card_number: &str,
+    set_name: &str,
+) -> Vec<MtgjsonForeignDataObject> {
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(parse_foreign_async(sf_prints_url, card_name, card_number, set_name))
+        .unwrap_or_default()
+}
+
+/// Parse printings from Scryfall prints URL (main public interface)
+pub fn parse_printings(sf_prints_url: Option<&str>) -> Vec<String> {
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(parse_printings_async(sf_prints_url))
+        .unwrap_or_default()
+}
+
+/// Parse rulings from Scryfall URL (main public interface)  
+pub fn parse_rulings(rulings_url: &str) -> Vec<MtgjsonRulingObject> {
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(parse_rulings_async(rulings_url))
+        .unwrap_or_default()
+}
+
+/// Get Scryfall set data for a specific set (main public interface)
+pub fn get_scryfall_set_data(set_code: &str) -> Option<Value> {
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(get_scryfall_set_data_async(set_code))
+        .unwrap_or(None)
 }
 
 /// Add UUID to MTGJSON objects (placeholder implementation)

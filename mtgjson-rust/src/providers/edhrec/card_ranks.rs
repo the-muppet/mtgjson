@@ -6,13 +6,13 @@ use std::collections::{HashMap, HashSet};
 use crate::prices::MtgjsonPricesObject;
 use crate::providers::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
 
-#[pyclass(name = "EdhrecProvider")]
-pub struct EdhrecProvider {
+#[pyclass(name = "EdhrecProviderCardRanks")]
+pub struct EdhrecProviderCardRanks {
     base: BaseProvider,
 }
 
 #[pymethods]
-impl EdhrecProvider {
+impl EdhrecProviderCardRanks {
     #[new]
     pub fn new() -> PyResult<Self> {
         let headers = HashMap::new();
@@ -22,13 +22,13 @@ impl EdhrecProvider {
 }
 
 #[async_trait]
-impl AbstractProvider for EdhrecProvider {
+impl AbstractProvider for EdhrecProviderCardRanks {
     fn get_class_id(&self) -> &str {
         &self.base.class_id
     }
     
     fn get_class_name(&self) -> &str {
-        "EdhrecProvider"
+        "EdhrecProviderCardRanks"
     }
     
     fn build_http_header(&self) -> HashMap<String, String> {
@@ -52,7 +52,7 @@ impl AbstractProvider for EdhrecProvider {
         _third_party_to_mtgjson: &HashMap<String, HashSet<String>>,
         _price_data_rows: &[Value],
         _card_platform_id_key: &str,
-        _default_prices_object: &MtgjsonPrices,
+        _default_prices_object: &MtgjsonPricesObject,
         _foil_key: &str,
         _retail_key: Option<&str>,
         _retail_quantity_key: Option<&str>,

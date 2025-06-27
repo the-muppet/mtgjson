@@ -54,13 +54,13 @@ use providers::{
 use compiled_classes::{
     MtgjsonStructures, MtgjsonCompiledList, MtgjsonDeckObjectList, 
     MtgjsonKeywords, MtgjsonAllIdentifiers, MtgjsonAllPrintings,
-    MtgjsonAtomicCards, MtgjsonCardTypesObject, MtgjsonEnumValues,
+    MtgjsonAtomicCards, MtgjsonEnumValues,
     MtgjsonSetObjectList, MtgjsonTcgplayerSkus
 };
 
 // Import all performance modules
 use builders::{
-    OutputGenerator, PriceBuilder, ParallelProcessor, ParallelIterator, SetBuilderFunctions
+    OutputGenerator, PriceBuilder, ParallelProcessor, ParallelIterator
 };
 
 // Export everything
