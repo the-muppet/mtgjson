@@ -6,29 +6,29 @@ use std::collections::{HashMap, HashSet};
 use crate::prices::MtgjsonPrices;
 use super::{AbstractProvider, BaseProvider, ProviderError, ProviderResult};
 
-#[pyclass(name = "EdhrecProvider")]
-pub struct EdhrecProvider {
+#[pyclass(name = "MTGBanProvider")]
+pub struct MTGBanProvider {
     base: BaseProvider,
 }
 
 #[pymethods]
-impl EdhrecProvider {
+impl MTGBanProvider {
     #[new]
     pub fn new() -> PyResult<Self> {
         let headers = HashMap::new();
-        let base = BaseProvider::new("edhrec".to_string(), headers);
+        let base = BaseProvider::new("mtgban".to_string(), headers);
         Ok(Self { base })
     }
 }
 
 #[async_trait]
-impl AbstractProvider for EdhrecProvider {
+impl AbstractProvider for MTGBanProvider {
     fn get_class_id(&self) -> &str {
         &self.base.class_id
     }
     
     fn get_class_name(&self) -> &str {
-        "EdhrecProvider"
+        "MTGBanProvider"
     }
     
     fn build_http_header(&self) -> HashMap<String, String> {

@@ -50,6 +50,9 @@ mod set_builder;
 // Compiled classes
 mod compiled_classes;
 
+// Providers module
+mod providers;
+
 // Import all the structs
 use card::MtgjsonCard;
 use deck::{MtgjsonDeck, MtgjsonDeckHeader};
@@ -73,6 +76,15 @@ use compiled_classes::{
     MtgjsonKeywords, MtgjsonAllIdentifiers, MtgjsonAllPrintings,
     MtgjsonAtomicCards, MtgjsonCardTypes, MtgjsonEnumValues,
     MtgjsonSetList, MtgjsonTcgplayerSkus
+};
+
+// Import providers
+use providers::{
+    CardHoarderProvider, CardKingdomProvider, CardMarketProvider, EdhrecProvider,
+    GathererProvider, GitHubBoostersProvider, GitHubCardSealedProductsProvider,
+    GitHubDecksProvider, GitHubMTGSqliteProvider, GitHubSealedProvider,
+    MTGBanProvider, MtgWikiProvider, MultiverseBridgeProvider,
+    ScryfallProvider, TCGPlayerProvider, WhatsInStandardProvider, WizardsProvider
 };
 
 /// Python module definition
@@ -126,6 +138,25 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Add legacy parallel classes (deprecated but for compatibility)
     m.add_class::<parallel_call::ParallelProcessor>()?;
     m.add_class::<parallel_call::ParallelIterator>()?;
+    
+    // Add all provider classes
+    m.add_class::<CardHoarderProvider>()?;
+    m.add_class::<CardKingdomProvider>()?;
+    m.add_class::<CardMarketProvider>()?;
+    m.add_class::<EdhrecProvider>()?;
+    m.add_class::<GathererProvider>()?;
+    m.add_class::<GitHubBoostersProvider>()?;
+    m.add_class::<GitHubCardSealedProductsProvider>()?;
+    m.add_class::<GitHubDecksProvider>()?;
+    m.add_class::<GitHubMTGSqliteProvider>()?;
+    m.add_class::<GitHubSealedProvider>()?;
+    m.add_class::<MTGBanProvider>()?;
+    m.add_class::<MtgWikiProvider>()?;
+    m.add_class::<MultiverseBridgeProvider>()?;
+    m.add_class::<ScryfallProvider>()?;
+    m.add_class::<TCGPlayerProvider>()?;
+    m.add_class::<WhatsInStandardProvider>()?;
+    m.add_class::<WizardsProvider>()?;
     
     // Add utility modules (SetBuilder not ready yet)
     // m.add_class::<set_builder::SetBuilder>()?;
