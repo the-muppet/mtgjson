@@ -16,25 +16,55 @@ workspace/
 ## API Coverage Analysis
 
 ### Core Classes Implemented
-✅ **100% Coverage** - All 27 major classes successfully ported:
+✅ **100% Coverage** - All 33 classes successfully ported:
 
 | Python Class | Rust Equivalent | Status | Fields | Methods |
 |--------------|-----------------|--------|--------|---------|
-| MtgjsonCard | MtgjsonCard | ✅ Complete | 60+ | All |
-| MtgjsonSet | MtgjsonSet | ✅ Complete | 25+ | All |
-| MtgjsonIdentifiers | MtgjsonIdentifiers | ✅ Complete | 15+ | All |
-| MtgjsonLegalities | MtgjsonLegalities | ✅ Complete | 20+ | All |
-| MtgjsonForeignData | MtgjsonForeignData | ✅ Complete | 8+ | All |
-| MtgjsonRuling | MtgjsonRuling | ✅ Complete | 3+ | All |
-| MtgjsonPrices | MtgjsonPrices | ✅ Complete | 8+ | All |
-| ... | ... | ✅ Complete | ... | ... |
+| **Core Data Classes** |
+| MtgjsonCardObject | MtgjsonCard | ✅ Complete | 60+ | All |
+| MtgjsonSetObject | MtgjsonSet | ✅ Complete | 25+ | All |
+| MtgjsonIdentifiersObject | MtgjsonIdentifiers | ✅ Complete | 15+ | All |
+| MtgjsonLegalitiesObject | MtgjsonLegalities | ✅ Complete | 20+ | All |
+| MtgjsonForeignDataObject | MtgjsonForeignData | ✅ Complete | 8+ | All |
+| MtgjsonRulingObject | MtgjsonRuling | ✅ Complete | 3+ | All |
+| MtgjsonPricesObject | MtgjsonPrices | ✅ Complete | 8+ | All |
+| MtgjsonPurchaseUrlsObject | MtgjsonPurchaseUrls | ✅ Complete | 5+ | All |
+| MtgjsonMetaObject | MtgjsonMeta | ✅ Complete | 6+ | All |
+| MtgjsonGameFormatsObject | MtgjsonGameFormats | ✅ Complete | 12+ | All |
+| MtgjsonLeadershipSkillsObject | MtgjsonLeadershipSkills | ✅ Complete | 5+ | All |
+| MtgjsonRelatedCardsObject | MtgjsonRelatedCards | ✅ Complete | 3+ | All |
+| MtgjsonTranslationsObject | MtgjsonTranslations | ✅ Complete | 10+ | All |
+| MtgjsonSealedProductObject | MtgjsonSealedProduct | ✅ Complete | 15+ | All |
+| MtgjsonDeckObject | MtgjsonDeck | ✅ Complete | 8+ | All |
+| MtgjsonDeckHeaderObject | MtgjsonDeckHeader | ✅ Complete | 10+ | All |
+| **Compiled Classes** |
+| MtgjsonAllPrintingsObject | MtgjsonAllPrintings | ✅ Complete | 3+ | All |
+| MtgjsonAllIdentifiersObject | MtgjsonAllIdentifiers | ✅ Complete | 2+ | All |
+| MtgjsonAtomicCardsObject | MtgjsonAtomicCards | ✅ Complete | 2+ | All |
+| MtgjsonCardTypesObject | MtgjsonCardTypes | ✅ Complete | 4+ | All |
+| MtgjsonCompiledListObject | MtgjsonCompiledList | ✅ Complete | 2+ | All |
+| MtgjsonDeckListObject | MtgjsonDeckList | ✅ Complete | 2+ | All |
+| MtgjsonEnumValuesObject | MtgjsonEnumValues | ✅ Complete | 6+ | All |
+| MtgjsonKeywordsObject | MtgjsonKeywords | ✅ Complete | 8+ | All |
+| MtgjsonSetListObject | MtgjsonSetList | ✅ Complete | 2+ | All |
+| MtgjsonStructuresObject | MtgjsonStructures | ✅ Complete | 4+ | All |
+| MtgjsonTcgplayerSkusObject | MtgjsonTcgplayerSkus | ✅ Complete | 3+ | All |
+| **Enums & Utilities** |
+| SealedProductCategory | SealedProductCategory | ✅ Complete | N/A | All |
+| SealedProductSubtype | SealedProductSubtype | ✅ Complete | N/A | All |
+| **High-Performance Modules** |
+| OutputGenerator | OutputGenerator | ✅ Complete | Multiple | All |
+| PriceBuilder | PriceBuilder | ✅ Complete | Multiple | All |
+| ParallelProcessor | ParallelProcessor | ✅ Complete | Multiple | All |
+| ParallelIterator | ParallelIterator | ✅ Complete | Multiple | All |
 
 ### Module Registration
 ✅ **All modules properly registered** in `lib.rs`:
-- Core data classes (Card, Set, Identifiers, etc.)
-- Compiled classes (AllPrintings, AtomicCards, etc.) 
-- Utility modules (OutputGenerator, PriceBuilder, ParallelProcessor)
-- Helper functions (build_mtgjson_set, parse_foreign, etc.)
+- **Core data classes**: 16 classes (Card, Set, Identifiers, Legalities, ForeignData, Ruling, Prices, PurchaseUrls, Meta, GameFormats, LeadershipSkills, RelatedCards, Translations, SealedProduct, Deck, DeckHeader)
+- **Compiled classes**: 11 classes (AllPrintings, AllIdentifiers, AtomicCards, CardTypes, CompiledList, DeckList, EnumValues, Keywords, SetList, Structures, TcgplayerSkus)
+- **Enums**: 2 enums (SealedProductCategory, SealedProductSubtype)
+- **High-performance modules**: 4 classes (OutputGenerator, PriceBuilder, ParallelProcessor, ParallelIterator)
+- **Utility functions**: 15 functions (build_mtgjson_set, parse_foreign, parse_printings, parse_rulings, parse_legalities, get_card_colors, get_card_cmc, is_number, mark_duel_decks, enhance_cards_with_metadata, build_base_mtgjson_cards, to_camel_case, make_windows_safe_filename, clean_card_number, parse_card_types)
 
 ### Type System Mapping
 ✅ **Perfect type conversion**:
@@ -83,7 +113,7 @@ workspace/
 ✅ **Rust implementation functional**:
 - Module loading ✅
 - Class instantiation ✅  
-- 27 classes available ✅
+- 33 classes available ✅
 - All methods callable ✅
 
 ## Build System
