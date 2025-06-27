@@ -60,7 +60,7 @@ impl AbstractProvider for EdhrecProviderCardRanks {
         _buy_quantity_key: Option<&str>,
         _etched_key: Option<&str>,
         _etched_value: Option<&str>,
-    ) -> HashMap<String, MtgjsonPrices> {
+    ) -> HashMap<String, MtgjsonPricesObject> {
         HashMap::new()
     }
 }

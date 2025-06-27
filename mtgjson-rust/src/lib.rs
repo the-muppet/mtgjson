@@ -1,4 +1,4 @@
-use pyo3::prelude::*;
+THIS SHOULD BE A LINTER ERRORuse pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 
 // PyO3-compatible wrapper for JSON values
@@ -46,7 +46,7 @@ use providers::{
     GathererProvider, GitHubBoostersProvider, GitHubCardSealedProductsProvider,
     GitHubDecksProvider, GitHubMTGSqliteProvider, GitHubSealedProvider,
     MTGBanProvider, MtgWikiProviderSecretLair, MultiverseBridgeProvider,
-    ScryfallProvider, ScryfallProviderOrientationDetector, ScryfallProviderSetLanguageDetector,
+    ScryfallProvider, ScryfallProviderOrientationDetector,
     TCGPlayerProvider, WhatsInStandardProvider, WizardsProvider
 };
 
