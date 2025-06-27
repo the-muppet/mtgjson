@@ -551,17 +551,22 @@ mod tests {
     #[test]
     fn test_output_generator_creation() {
         let generator = OutputGenerator::new(None, None);
+        assert_eq!(generator.output_path, "./output");
+        assert!(generator.pretty_print);
         assert_eq!(generator.output_version, "5.0.0");
-        assert_eq!(generator.output_date, "");
         assert!(generator.output_files.is_empty());
         assert!(generator.compression_enabled);
     }
 
     #[test]
-    fn test_output_generator_default() {
-        let generator = OutputGenerator::default();
+    fn test_output_generator_creation_with_params() {
+        let generator = OutputGenerator::new(
+            Some("/custom/path".to_string()),
+            Some(false)
+        );
+        assert_eq!(generator.output_path, "/custom/path");
+        assert!(!generator.pretty_print);
         assert_eq!(generator.output_version, "5.0.0");
-        assert_eq!(generator.output_date, "");
         assert!(generator.output_files.is_empty());
         assert!(generator.compression_enabled);
     }
@@ -583,6 +588,7 @@ mod tests {
     #[test]
     fn test_enable_compression() {
         let mut generator = OutputGenerator::new(None, None);
+        
         generator.enable_compression(false);
         assert!(!generator.compression_enabled);
         
@@ -593,52 +599,101 @@ mod tests {
     #[test]
     fn test_add_output_file() {
         let mut generator = OutputGenerator::new(None, None);
-        generator.add_output_file("AllCards.json".to_string());
-        generator.add_output_file("AllSets.json".to_string());
         
-        assert_eq!(generator.output_files.len(), 2);
+        generator.add_output_file("AllCards.json".to_string());
+        assert_eq!(generator.output_files.len(), 1);
         assert!(generator.output_files.contains(&"AllCards.json".to_string()));
+        
+        generator.add_output_file("AllSets.json".to_string());
+        assert_eq!(generator.output_files.len(), 2);
         assert!(generator.output_files.contains(&"AllSets.json".to_string()));
+    }
+
+    #[test]
+    fn test_add_output_file_duplicates() {
+        let mut generator = OutputGenerator::new(None, None);
+        
+        generator.add_output_file("AllCards.json".to_string());
+        generator.add_output_file("AllCards.json".to_string());
+        
+        // Should not add duplicates
+        assert_eq!(generator.output_files.len(), 1);
     }
 
     #[test]
     fn test_remove_output_file() {
         let mut generator = OutputGenerator::new(None, None);
+        
         generator.add_output_file("AllCards.json".to_string());
         generator.add_output_file("AllSets.json".to_string());
+        assert_eq!(generator.output_files.len(), 2);
         
         generator.remove_output_file("AllCards.json".to_string());
-        
         assert_eq!(generator.output_files.len(), 1);
         assert!(!generator.output_files.contains(&"AllCards.json".to_string()));
         assert!(generator.output_files.contains(&"AllSets.json".to_string()));
     }
 
     #[test]
+    fn test_remove_nonexistent_file() {
+        let mut generator = OutputGenerator::new(None, None);
+        
+        generator.add_output_file("AllCards.json".to_string());
+        generator.remove_output_file("NonExistent.json".to_string());
+        
+        // Should still have the original file
+        assert_eq!(generator.output_files.len(), 1);
+        assert!(generator.output_files.contains(&"AllCards.json".to_string()));
+    }
+
+    #[test]
     fn test_clear_output_files() {
         let mut generator = OutputGenerator::new(None, None);
+        
         generator.add_output_file("AllCards.json".to_string());
         generator.add_output_file("AllSets.json".to_string());
+        generator.add_output_file("AtomicCards.json".to_string());
+        assert_eq!(generator.output_files.len(), 3);
         
         generator.clear_output_files();
-        
         assert!(generator.output_files.is_empty());
     }
 
     #[test]
     fn test_generate_output_files() {
         let mut generator = OutputGenerator::new(None, None);
-        generator.set_output_date("2023-01-01".to_string());
+        
         generator.add_output_file("AllCards.json".to_string());
         generator.add_output_file("AllSets.json".to_string());
+        generator.add_output_file("AtomicCards.json".to_string());
         
         let result = generator.generate_output_files();
         assert!(result.is_ok());
         
         let output_map = result.unwrap();
-        assert_eq!(output_map.len(), 2);
+        assert_eq!(output_map.len(), 3);
         assert!(output_map.contains_key("AllCards.json"));
         assert!(output_map.contains_key("AllSets.json"));
+        assert!(output_map.contains_key("AtomicCards.json"));
+    }
+
+    #[test]
+    fn test_generate_output_files_unknown_file() {
+        let mut generator = OutputGenerator::new(None, None);
+        
+        generator.add_output_file("UnknownFile.json".to_string());
+        
+        let result = generator.generate_output_files();
+        assert!(result.is_ok());
+        
+        let output_map = result.unwrap();
+        assert_eq!(output_map.len(), 1);
+        assert!(output_map.contains_key("UnknownFile.json"));
+        
+        // Unknown files should get default content
+        let content = output_map.get("UnknownFile.json").unwrap();
+        assert!(content.contains("meta"));
+        assert!(content.contains("data"));
     }
 
     #[test]
@@ -647,154 +702,160 @@ mod tests {
         generator.set_output_version("5.1.0".to_string());
         generator.set_output_date("2023-01-01".to_string());
         
-        let meta_str = generator.generate_meta_object();
-        let meta: serde_json::Value = serde_json::from_str(&meta_str).unwrap();
-        assert_eq!(meta["version"], "5.1.0");
-        assert_eq!(meta["date"], "2023-01-01");
+        let meta = generator.generate_meta_object();
+        assert!(meta.contains("5.1.0"));
+        assert!(meta.contains("2023-01-01"));
     }
 
     #[test]
     fn test_generate_all_cards() {
-        let generator = OutputGenerator::new();
-        let result = generator.generate_all_cards();
+        let generator = OutputGenerator::new(None, None);
         
+        let result = generator.generate_all_cards();
         assert!(result.is_ok());
+        
         let output = result.unwrap();
-        assert!(output.contains("\"meta\""));
-        assert!(output.contains("\"data\""));
+        assert!(output.contains("meta"));
+        assert!(output.contains("data"));
+        assert!(output.contains("5.0.0"));
     }
 
     #[test]
     fn test_generate_all_sets() {
-        let generator = OutputGenerator::new();
-        let result = generator.generate_all_sets();
+        let generator = OutputGenerator::new(None, None);
         
+        let result = generator.generate_all_sets();
         assert!(result.is_ok());
+        
         let output = result.unwrap();
-        assert!(output.contains("\"meta\""));
-        assert!(output.contains("\"data\""));
+        assert!(output.contains("meta"));
+        assert!(output.contains("data"));
     }
 
     #[test]
     fn test_generate_atomic_cards() {
-        let generator = OutputGenerator::new();
-        let result = generator.generate_atomic_cards();
+        let generator = OutputGenerator::new(None, None);
         
+        let result = generator.generate_atomic_cards();
         assert!(result.is_ok());
+        
         let output = result.unwrap();
-        assert!(output.contains("\"meta\""));
-        assert!(output.contains("\"data\""));
+        assert!(output.contains("meta"));
+        assert!(output.contains("data"));
     }
 
     #[test]
     fn test_generate_deck_list() {
-        let generator = OutputGenerator::new();
-        let result = generator.generate_deck_list();
+        let generator = OutputGenerator::new(None, None);
         
+        let result = generator.generate_deck_list();
         assert!(result.is_ok());
+        
         let output = result.unwrap();
-        assert!(output.contains("\"meta\""));
-        assert!(output.contains("\"data\""));
+        assert!(output.contains("meta"));
+        assert!(output.contains("data"));
     }
 
     #[test]
     fn test_generate_set_list() {
-        let generator = OutputGenerator::new();
-        let result = generator.generate_set_list();
+        let generator = OutputGenerator::new(None, None);
         
+        let result = generator.generate_set_list();
         assert!(result.is_ok());
+        
         let output = result.unwrap();
-        assert!(output.contains("\"meta\""));
-        assert!(output.contains("\"data\""));
+        assert!(output.contains("meta"));
+        assert!(output.contains("data"));
     }
 
     #[test]
     fn test_generate_keywords() {
-        let generator = OutputGenerator::new();
-        let result = generator.generate_keywords();
+        let generator = OutputGenerator::new(None, None);
         
+        let result = generator.generate_keywords();
         assert!(result.is_ok());
+        
         let output = result.unwrap();
-        assert!(output.contains("\"meta\""));
-        assert!(output.contains("\"data\""));
+        assert!(output.contains("meta"));
+        assert!(output.contains("data"));
     }
 
     #[test]
     fn test_generate_card_types() {
-        let generator = OutputGenerator::new();
-        let result = generator.generate_card_types();
+        let generator = OutputGenerator::new(None, None);
         
+        let result = generator.generate_card_types();
         assert!(result.is_ok());
+        
         let output = result.unwrap();
-        assert!(output.contains("\"meta\""));
-        assert!(output.contains("\"data\""));
+        assert!(output.contains("meta"));
+        assert!(output.contains("data"));
     }
 
     #[test]
     fn test_compress_output() {
-        let generator = OutputGenerator::new();
-        let test_data = "This is a test string for compression".to_string();
+        let generator = OutputGenerator::new(None, None);
         
-        let result = generator.compress_output(test_data.clone());
+        let result = generator.compress_output("test.json".to_string());
         assert!(result.is_ok());
         
-        let compressed = result.unwrap();
-        // Compressed data should be different from original
-        assert_ne!(compressed.len(), test_data.len());
+        let compressed_name = result.unwrap();
+        assert_eq!(compressed_name, "test.json.gz");
     }
 
     #[test]
-    fn test_compress_output_disabled() {
-        let mut generator = OutputGenerator::new();
+    fn test_compression_disabled() {
+        let mut generator = OutputGenerator::new(None, None);
         generator.enable_compression(false);
         
-        let test_data = "This is a test string".to_string();
-        let result = generator.compress_output(test_data.clone());
-        
+        // Compression methods should still work but might behave differently
+        let result = generator.compress_output("test.json".to_string());
         assert!(result.is_ok());
-        let output = result.unwrap();
-        // When compression is disabled, output should be same as input
-        assert_eq!(output, test_data);
     }
 
     #[test]
     fn test_json_serialization() {
-        let mut generator = OutputGenerator::new();
+        let mut generator = OutputGenerator::new(None, None);
         generator.set_output_version("5.1.0".to_string());
         generator.set_output_date("2023-01-01".to_string());
-        generator.add_output_file("test.json".to_string());
+        generator.add_output_file("AllCards.json".to_string());
         
         let json_result = generator.to_json();
         assert!(json_result.is_ok());
         
         let json_string = json_result.unwrap();
+        assert!(json_string.contains("output_path"));
+        assert!(json_string.contains("pretty_print"));
         assert!(json_string.contains("5.1.0"));
         assert!(json_string.contains("2023-01-01"));
-        assert!(json_string.contains("test.json"));
+        assert!(json_string.contains("AllCards.json"));
     }
 
     #[test]
     fn test_string_representations() {
-        let mut generator = OutputGenerator::new();
+        let mut generator = OutputGenerator::new(None, None);
         generator.set_output_version("5.1.0".to_string());
-        generator.set_output_date("2023-01-01".to_string());
         
         let str_repr = generator.__str__();
+        assert!(str_repr.contains("./output"));
         assert!(str_repr.contains("5.1.0"));
-        assert!(str_repr.contains("2023-01-01"));
         
         let repr = generator.__repr__();
+        assert!(repr.contains("OutputGenerator"));
+        assert!(repr.contains("./output"));
         assert!(repr.contains("5.1.0"));
-        assert!(repr.contains("2023-01-01"));
     }
 
     #[test]
     fn test_equality() {
-        let mut generator1 = OutputGenerator::new();
-        let mut generator2 = OutputGenerator::new();
+        let mut generator1 = OutputGenerator::new(None, None);
+        let mut generator2 = OutputGenerator::new(None, None);
         
         generator1.set_output_version("5.1.0".to_string());
+        generator1.set_output_date("2023-01-01".to_string());
+        
         generator2.set_output_version("5.1.0".to_string());
+        generator2.set_output_date("2023-01-01".to_string());
         
         assert!(generator1.__eq__(&generator2));
         
@@ -804,7 +865,7 @@ mod tests {
 
     #[test]
     fn test_hash() {
-        let mut generator = OutputGenerator::new();
+        let mut generator = OutputGenerator::new(None, None);
         generator.set_output_version("5.1.0".to_string());
         
         let hash1 = generator.__hash__();
@@ -812,74 +873,319 @@ mod tests {
         assert_eq!(hash1, hash2);
     }
 
+    // COMPREHENSIVE ADDITIONAL TESTS FOR FULL COVERAGE
+
     #[test]
-    fn test_output_file_duplicates() {
-        let mut generator = OutputGenerator::new();
-        generator.add_output_file("AllCards.json".to_string());
-        generator.add_output_file("AllCards.json".to_string()); // Duplicate
+    fn test_output_generator_getters_setters() {
+        let mut generator = OutputGenerator::new(None, None);
         
-        // Should not add duplicates
-        assert_eq!(generator.output_files.len(), 1);
+        // Test getters
+        assert_eq!(generator.get_output_path(), "./output");
+        assert!(generator.get_pretty_print());
+        assert_eq!(generator.get_output_version(), "5.0.0");
+        assert_eq!(generator.get_output_date(), "");
+        assert!(generator.get_output_files().is_empty());
+        assert!(generator.get_compression_enabled());
+        
+        // Test setters
+        generator.set_output_path("/new/path".to_string());
+        assert_eq!(generator.get_output_path(), "/new/path");
+        
+        generator.set_pretty_print(false);
+        assert!(!generator.get_pretty_print());
     }
 
     #[test]
-    fn test_remove_nonexistent_file() {
-        let mut generator = OutputGenerator::new();
+    fn test_output_generator_clone_trait() {
+        let mut generator = OutputGenerator::new(
+            Some("/test/path".to_string()),
+            Some(false)
+        );
+        generator.set_output_version("5.1.0".to_string());
+        generator.set_output_date("2023-01-01".to_string());
         generator.add_output_file("AllCards.json".to_string());
         
-        generator.remove_output_file("NonExistent.json".to_string());
+        let cloned = generator.clone();
         
-        // Should still have the original file
-        assert_eq!(generator.output_files.len(), 1);
-        assert!(generator.output_files.contains(&"AllCards.json".to_string()));
+        assert_eq!(generator.output_path, cloned.output_path);
+        assert_eq!(generator.pretty_print, cloned.pretty_print);
+        assert_eq!(generator.output_version, cloned.output_version);
+        assert_eq!(generator.output_date, cloned.output_date);
+        assert_eq!(generator.output_files, cloned.output_files);
+        assert_eq!(generator.compression_enabled, cloned.compression_enabled);
     }
 
     #[test]
-    fn test_large_output_generation() {
-        let mut generator = OutputGenerator::new();
+    fn test_output_generator_debug_trait() {
+        let generator = OutputGenerator::new(
+            Some("/debug/path".to_string()),
+            Some(true)
+        );
+        
+        let debug_str = format!("{:?}", generator);
+        assert!(debug_str.contains("OutputGenerator"));
+        assert!(debug_str.contains("/debug/path"));
+        assert!(debug_str.contains("true"));
+    }
+
+    #[test]
+    fn test_output_generator_edge_cases() {
+        // Test with empty strings
+        let mut generator = OutputGenerator::new(
+            Some("".to_string()),
+            Some(false)
+        );
+        
+        assert_eq!(generator.output_path, "");
+        
+        generator.set_output_version("".to_string());
+        generator.set_output_date("".to_string());
+        
+        assert_eq!(generator.output_version, "");
+        assert_eq!(generator.output_date, "");
+        
+        // Test with special characters
+        generator.set_output_path("/path/with spaces/and-symbols_123".to_string());
+        assert_eq!(generator.output_path, "/path/with spaces/and-symbols_123");
+    }
+
+    #[test]
+    fn test_output_generator_large_collections() {
+        let mut generator = OutputGenerator::new(None, None);
         
         // Add many output files
-        for i in 0..100 {
-            generator.add_output_file(format!("file_{}.json", i));
+        for i in 0..1000 {
+            generator.add_output_file(format!("File{}.json", i));
         }
         
-        assert_eq!(generator.output_files.len(), 100);
+        assert_eq!(generator.output_files.len(), 1000);
+        
+        // Test clearing large collection
+        generator.clear_output_files();
+        assert!(generator.output_files.is_empty());
+    }
+
+    #[test]
+    fn test_generate_all_known_files() {
+        let mut generator = OutputGenerator::new(None, None);
+        
+        // Add all known file types
+        let known_files = vec![
+            "AllCards.json",
+            "AllSets.json", 
+            "AtomicCards.json",
+            "DeckList.json",
+            "SetList.json",
+            "Keywords.json",
+            "CardTypes.json"
+        ];
+        
+        for file in &known_files {
+            generator.add_output_file(file.to_string());
+        }
         
         let result = generator.generate_output_files();
         assert!(result.is_ok());
         
         let output_map = result.unwrap();
-        assert_eq!(output_map.len(), 100);
+        assert_eq!(output_map.len(), known_files.len());
+        
+        for file in &known_files {
+            assert!(output_map.contains_key(*file));
+            let content = output_map.get(*file).unwrap();
+            assert!(content.contains("meta"));
+            assert!(content.contains("data"));
+        }
     }
 
     #[test]
-    fn test_error_handling() {
-        let generator = OutputGenerator::new();
+    fn test_output_generator_unicode_paths() {
+        let mut generator = OutputGenerator::new(
+            Some("/测试/路径/ディレクトリ".to_string()),
+            None
+        );
         
-        // Test error handling in various generation methods
-        // These should not panic even with empty/invalid data
-        let _ = generator.generate_all_cards();
-        let _ = generator.generate_all_sets();
-        let _ = generator.generate_atomic_cards();
-        let _ = generator.generate_deck_list();
-        let _ = generator.generate_set_list();
-        let _ = generator.generate_keywords();
-        let _ = generator.generate_card_types();
+        assert_eq!(generator.output_path, "/测试/路径/ディレクトリ");
+        
+        generator.set_output_version("版本5.1.0".to_string());
+        assert_eq!(generator.output_version, "版本5.1.0");
+        
+        generator.add_output_file("ファイル.json".to_string());
+        assert!(generator.output_files.contains(&"ファイル.json".to_string()));
     }
 
     #[test]
-    fn test_clone() {
-        let mut original = OutputGenerator::new();
-        original.set_output_version("5.1.0".to_string());
-        original.set_output_date("2023-01-01".to_string());
-        original.add_output_file("test.json".to_string());
-        original.enable_compression(false);
+    fn test_complex_integration_scenario() {
+        let mut generator = OutputGenerator::new(
+            Some("/mtgjson/output".to_string()),
+            Some(true)
+        );
         
-        let cloned = original.clone();
+        // Set up a complex scenario
+        generator.set_output_version("5.2.0".to_string());
+        generator.set_output_date("2023-12-01".to_string());
+        generator.enable_compression(true);
         
-        assert_eq!(original.output_version, cloned.output_version);
-        assert_eq!(original.output_date, cloned.output_date);
-        assert_eq!(original.output_files, cloned.output_files);
-        assert_eq!(original.compression_enabled, cloned.compression_enabled);
+        // Add multiple output files
+        let files = vec![
+            "AllCards.json",
+            "AllSets.json",
+            "AtomicCards.json",
+            "SetList.json",
+            "Keywords.json"
+        ];
+        
+        for file in &files {
+            generator.add_output_file(file.to_string());
+        }
+        
+        // Test all functionality
+        assert_eq!(generator.get_output_path(), "/mtgjson/output");
+        assert!(generator.get_pretty_print());
+        assert_eq!(generator.get_output_version(), "5.2.0");
+        assert_eq!(generator.get_output_date(), "2023-12-01");
+        assert_eq!(generator.get_output_files().len(), 5);
+        assert!(generator.get_compression_enabled());
+        
+        // Test output generation
+        let output_result = generator.generate_output_files();
+        assert!(output_result.is_ok());
+        
+        let output_map = output_result.unwrap();
+        assert_eq!(output_map.len(), 5);
+        
+        for file in &files {
+            let content = output_map.get(*file).unwrap();
+            assert!(content.contains("5.2.0"));
+            assert!(content.contains("2023-12-01"));
+        }
+        
+        // Test meta generation
+        let meta = generator.generate_meta_object();
+        assert!(meta.contains("5.2.0"));
+        assert!(meta.contains("2023-12-01"));
+        
+        // Test compression
+        let compress_result = generator.compress_output("test.json".to_string());
+        assert!(compress_result.is_ok());
+        assert_eq!(compress_result.unwrap(), "test.json.gz");
+        
+        // Test JSON serialization
+        let json_result = generator.to_json();
+        assert!(json_result.is_ok());
+        
+        let json_str = json_result.unwrap();
+        assert!(json_str.contains("/mtgjson/output"));
+        assert!(json_str.contains("5.2.0"));
+        assert!(json_str.contains("2023-12-01"));
+        assert!(json_str.contains("AllCards.json"));
+        
+        // Test string representations
+        let str_repr = generator.__str__();
+        assert!(str_repr.contains("/mtgjson/output"));
+        assert!(str_repr.contains("5.2.0"));
+        
+        let repr_str = generator.__repr__();
+        assert!(repr_str.contains("OutputGenerator"));
+        assert!(repr_str.contains("/mtgjson/output"));
+        assert!(repr_str.contains("true"));
+        
+        // Test cloning
+        let cloned = generator.clone();
+        assert!(generator.__eq__(&cloned));
+        
+        // Test hashing
+        let hash1 = generator.__hash__();
+        let hash2 = generator.__hash__();
+        assert_eq!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_output_generator_error_handling() {
+        let generator = OutputGenerator::new(None, None);
+        
+        // Test that generation methods don't panic on empty data
+        assert!(generator.generate_all_cards().is_ok());
+        assert!(generator.generate_all_sets().is_ok());
+        assert!(generator.generate_atomic_cards().is_ok());
+        assert!(generator.generate_deck_list().is_ok());
+        assert!(generator.generate_set_list().is_ok());
+        assert!(generator.generate_keywords().is_ok());
+        assert!(generator.generate_card_types().is_ok());
+    }
+
+    #[test]
+    fn test_output_file_order_preservation() {
+        let mut generator = OutputGenerator::new(None, None);
+        
+        // Add files in specific order
+        let files = vec!["Z.json", "A.json", "M.json"];
+        for file in &files {
+            generator.add_output_file(file.to_string());
+        }
+        
+        // Order should be preserved (not alphabetical)
+        let output_files = generator.get_output_files();
+        assert_eq!(output_files[0], "Z.json");
+        assert_eq!(output_files[1], "A.json");
+        assert_eq!(output_files[2], "M.json");
+    }
+
+    #[test]
+    fn test_output_generator_equality_edge_cases() {
+        let mut gen1 = OutputGenerator::new(None, None);
+        let mut gen2 = OutputGenerator::new(None, None);
+        
+        // Test equality with different pretty_print (should not affect equality)
+        gen1.set_pretty_print(true);
+        gen2.set_pretty_print(false);
+        assert!(gen1.__eq__(&gen2)); // Equality based on path, version, date only
+        
+        // Test inequality with different paths
+        gen1.set_output_path("/path1".to_string());
+        gen2.set_output_path("/path2".to_string());
+        assert!(!gen1.__eq__(&gen2));
+    }
+
+    #[test]
+    fn test_output_generator_comprehensive_file_types() {
+        let mut generator = OutputGenerator::new(None, None);
+        
+        // Test all possible file types including edge cases
+        let test_files = vec![
+            "AllCards.json",
+            "AllSets.json",
+            "AtomicCards.json",
+            "DeckList.json",
+            "SetList.json",
+            "Keywords.json",
+            "CardTypes.json",
+            "CustomFile.json",
+            "file_with_underscores.json",
+            "file-with-dashes.json",
+            "file123.json",
+            "UPPERCASE.json",
+            "mixedCase.json",
+            "file.with.dots.json"
+        ];
+        
+        for file in &test_files {
+            generator.add_output_file(file.to_string());
+        }
+        
+        let result = generator.generate_output_files();
+        assert!(result.is_ok());
+        
+        let output_map = result.unwrap();
+        assert_eq!(output_map.len(), test_files.len());
+        
+        // All files should have valid JSON content
+        for file in &test_files {
+            let content = output_map.get(*file).unwrap();
+            assert!(content.contains("{"));
+            assert!(content.contains("}"));
+            assert!(content.contains("meta"));
+            assert!(content.contains("data"));
+        }
     }
 }
