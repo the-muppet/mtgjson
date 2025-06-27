@@ -1768,16 +1768,11 @@ pub fn build_decks(set_code: &str) -> Vec<MtgjsonDeck> {
         };
         
         for (deck_name, deck_type) in deck_types {
-            let mut deck = MtgjsonDeck::new();
+            let mut deck = MtgjsonDeck::new("", None);
             deck.name = format!("{} - {}", set_code, deck_name);
-            deck.code = Some(set_code.to_string());
-            deck.type_ = Some(deck_type.to_string());
-            deck.release_date = Some("2023-01-01".to_string()); // Placeholder date
-            
-            // Generate UUID for deck
-            let uuid_source = format!("{}{}", deck.name, set_code);
-            let namespace = uuid::Uuid::NAMESPACE_DNS;
-            deck.uuid = uuid::Uuid::new_v5(&namespace, uuid_source.as_bytes()).to_string();
+            deck.code = set_code.to_string();
+            deck.type_ = deck_type.to_string();
+            deck.release_date = "2023-01-01".to_string(); // Placeholder date
             
             // Add sample mainboard and sideboard (would normally come from data files)
             // This is a minimal structure - real implementation would load from GitHub
@@ -1792,14 +1787,10 @@ pub fn build_decks(set_code: &str) -> Vec<MtgjsonDeck> {
             // Duel Decks: Merfolk vs. Goblins
             let deck_names = vec!["Merfolk", "Goblins"];
             for deck_name in deck_names {
-                let mut deck = MtgjsonDeck::new();
+                let mut deck = MtgjsonDeck::new("", None);
                 deck.name = format!("Duel Decks: {}", deck_name);
-                deck.code = Some(set_code.to_string());
-                deck.type_ = Some("duel".to_string());
-                
-                let uuid_source = format!("{}{}", deck.name, set_code);
-                let namespace = uuid::Uuid::NAMESPACE_DNS;
-                deck.uuid = uuid::Uuid::new_v5(&namespace, uuid_source.as_bytes()).to_string();
+                deck.code = set_code.to_string();
+                deck.type_ = "duel".to_string();
                 
                 decks.push(deck);
             }
@@ -1808,14 +1799,10 @@ pub fn build_decks(set_code: &str) -> Vec<MtgjsonDeck> {
             // Duel Decks: Garruk vs. Liliana
             let deck_names = vec!["Garruk", "Liliana"];
             for deck_name in deck_names {
-                let mut deck = MtgjsonDeck::new();
+                let mut deck = MtgjsonDeck::new("", None);
                 deck.name = format!("Duel Decks: {}", deck_name);
-                deck.code = Some(set_code.to_string());
-                deck.type_ = Some("duel".to_string());
-                
-                let uuid_source = format!("{}{}", deck.name, set_code);
-                let namespace = uuid::Uuid::NAMESPACE_DNS;
-                deck.uuid = uuid::Uuid::new_v5(&namespace, uuid_source.as_bytes()).to_string();
+                deck.code = set_code.to_string();
+                deck.type_ = "duel".to_string();
                 
                 decks.push(deck);
             }
