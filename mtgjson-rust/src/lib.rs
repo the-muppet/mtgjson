@@ -1,4 +1,4 @@
-THIS SHOULD BE A LINTER ERRORuse pyo3::prelude::*;
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 
 // PyO3-compatible wrapper for JSON values
@@ -105,7 +105,7 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<MtgjsonAllIdentifiers>()?;
     m.add_class::<MtgjsonAllPrintings>()?;
     m.add_class::<MtgjsonAtomicCards>()?;
-    m.add_class::<MtgjsonCardTypesObject>()?;
+    // m.add_class::<MtgjsonCardTypesObject>()?;  // Will be added when implemented
     m.add_class::<MtgjsonEnumValues>()?;
     m.add_class::<MtgjsonSetObjectList>()?;
     m.add_class::<MtgjsonTcgplayerSkus>()?;
@@ -130,10 +130,10 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_builder_functions::enhance_cards_with_metadata, m)?)?;
     m.add_function(wrap_pyfunction!(set_builder_functions::build_base_mtgjson_cards, m)?)?;
     
-    // Add utility functions
-    m.add_function(wrap_pyfunction!(utils_functions::to_camel_case, m)?)?;
-    m.add_function(wrap_pyfunction!(utils_functions::make_windows_safe_filename, m)?)?;
-    m.add_function(wrap_pyfunction!(utils_functions::clean_card_number, m)?)?;
+    // Add utility functions (when implemented)
+    // m.add_function(wrap_pyfunction!(utils_functions::to_camel_case, m)?)?;
+    // m.add_function(wrap_pyfunction!(utils_functions::make_windows_safe_filename, m)?)?;
+    // m.add_function(wrap_pyfunction!(utils_functions::clean_card_number, m)?)?;
     
     // Add all provider classes for 100% Python API coverage
     providers::add_provider_classes_to_module(m)?;
