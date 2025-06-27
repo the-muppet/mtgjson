@@ -1,4 +1,4 @@
-use crate::base::{skip_if_empty_optional_string, skip_if_empty_string, skip_if_empty_vec, JsonObject};
+THIS SHOULD BE A LINTER ERRORuse crate::base::{skip_if_empty_optional_string, skip_if_empty_string, skip_if_empty_vec, JsonObject};
 use crate::foreign_data::MtgjsonForeignData;
 use crate::game_formats::MtgjsonGameFormats;
 use crate::identifiers::MtgjsonIdentifiers;
@@ -15,7 +15,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 /// MTGJSON Singular Card Object
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[pyclass(name = "MtgjsonCard")]
 pub struct MtgjsonCard {
     #[pyo3(get, set)]
@@ -602,9 +602,25 @@ impl MtgjsonCard {
 
     /// Python less-than comparison for sorting
     pub fn __lt__(&self, other: &MtgjsonCard) -> bool {
+        use std::fs::OpenOptions;
+        use std::io::Write;
+        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open("/tmp/rust_debug.log") {
+            writeln!(file, "__LT__ called: '{}' < '{}'", self.number, other.number).ok();
+        }
+        
         match self.partial_cmp(other) {
-            Some(std::cmp::Ordering::Less) => true,
-            _ => false,
+            Some(std::cmp::Ordering::Less) => {
+                if let Ok(mut file) = OpenOptions::new().create(true).append(true).open("/tmp/rust_debug.log") {
+                    writeln!(file, "__LT__ result: true").ok();
+                }
+                true
+            },
+            other_result => {
+                if let Ok(mut file) = OpenOptions::new().create(true).append(true).open("/tmp/rust_debug.log") {
+                    writeln!(file, "__LT__ result: false (got {:?})", other_result).ok();
+                }
+                false
+            }
         }
     }
 
@@ -671,48 +687,84 @@ impl PartialOrd for MtgjsonCard {
         let other_number_clean = if other_number_clean.is_empty() { "100000".to_string() } else { other_number_clean };
         let other_number_clean_int = other_number_clean.parse::<u32>().unwrap_or(100000);
 
+        // DEBUG: Add prints to trace the logic
+        use std::fs::OpenOptions;
+        use std::io::Write;
+        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open("/tmp/rust_debug.log") {
+            writeln!(file, "DEBUG: Comparing '{}' vs '{}'", self.number, other.number).ok();
+            writeln!(file, "  self_clean: '{}' (int: {}, len: {})", self_number_clean, self_number_clean_int, self_number_clean.len()).ok();
+            writeln!(file, "  other_clean: '{}' (int: {}, len: {})", other_number_clean, other_number_clean_int, other_number_clean.len()).ok();
+        }
+
         // Check if both numbers are pure digits
         let self_is_digit = self.number == self_number_clean;
         let other_is_digit = other.number == other_number_clean;
 
+        eprintln!("  self_is_digit: {}, other_is_digit: {}", self_is_digit, other_is_digit);
+
         if self_is_digit && other_is_digit {
+            eprintln!("  CASE 1: Both are pure digits");
             if self_number_clean_int == other_number_clean_int {
                 if self_number_clean.len() != other_number_clean.len() {
-                    return Some(self_number_clean.len().cmp(&other_number_clean.len()));
+                    let result = self_number_clean.len().cmp(&other_number_clean.len());
+                    eprintln!("    Same int, different lengths: {} vs {} -> {:?}", self_number_clean.len(), other_number_clean.len(), result);
+                    return Some(result);
                 }
-                return Some(self_side.cmp(other_side));
+                let result = self_side.cmp(other_side);
+                eprintln!("    Same int and length, comparing sides: '{}' vs '{}' -> {:?}", self_side, other_side, result);
+                return Some(result);
             }
-            return Some(self_number_clean_int.cmp(&other_number_clean_int));
+            let result = self_number_clean_int.cmp(&other_number_clean_int);
+            eprintln!("    Different ints: {} vs {} -> {:?}", self_number_clean_int, other_number_clean_int, result);
+            return Some(result);
         }
 
         if self_is_digit {
+            eprintln!("  CASE 2: Self is pure digit, other is not");
             if self_number_clean_int == other_number_clean_int {
+                eprintln!("    Same int value ({}), pure digit wins: Less", self_number_clean_int);
                 return Some(Ordering::Less);
             }
-            return Some(self_number_clean_int.cmp(&other_number_clean_int));
+            let result = self_number_clean_int.cmp(&other_number_clean_int);
+            eprintln!("    Different int values: {} vs {} -> {:?}", self_number_clean_int, other_number_clean_int, result);
+            return Some(result);
         }
 
         if other_is_digit {
+            eprintln!("  CASE 3: Other is pure digit, self is not");
             if self_number_clean_int == other_number_clean_int {
+                eprintln!("    Same int value ({}), pure digit wins: Greater", self_number_clean_int);
                 return Some(Ordering::Greater);
             }
-            return Some(self_number_clean_int.cmp(&other_number_clean_int));
+            let result = self_number_clean_int.cmp(&other_number_clean_int);
+            eprintln!("    Different int values: {} vs {} -> {:?}", self_number_clean_int, other_number_clean_int, result);
+            return Some(result);
         }
 
         // Case 4: Neither is pure digit
+        eprintln!("  CASE 4: Neither is pure digit");
         // First check if digit strings are identical
         if self_number_clean == other_number_clean {
+            eprintln!("    Same digit strings: '{}' == '{}'", self_number_clean, other_number_clean);
             if self_side.is_empty() && other_side.is_empty() {
-                return Some(self.number.cmp(&other.number));
+                let result = self.number.cmp(&other.number);
+                eprintln!("    No sides, lexical comparison: '{}' vs '{}' -> {:?}", self.number, other.number, result);
+                return Some(result);
             }
-            return Some(self_side.cmp(other_side));
+            let result = self_side.cmp(other_side);
+            eprintln!("    Comparing sides: '{}' vs '{}' -> {:?}", self_side, other_side, result);
+            return Some(result);
         }
 
         // Then check if integer values are the same but digit strings differ
         if self_number_clean_int == other_number_clean_int {
+            eprintln!("  Same int values: {}", self_number_clean_int);
             if self_number_clean.len() != other_number_clean.len() {
-                return Some(self_number_clean.len().cmp(&other_number_clean.len()));
+                let result = self_number_clean.len().cmp(&other_number_clean.len());
+                eprintln!("  Different digit lengths: {} vs {} -> {:?}", self_number_clean.len(), other_number_clean.len(), result);
+                return Some(result);
             }
+            eprintln!("  Same lengths, comparing sides: '{}' vs '{}'", self_side, other_side);
             return Some(self_side.cmp(other_side));
         }
 
