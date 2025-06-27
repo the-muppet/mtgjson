@@ -7,21 +7,13 @@ use std::error::Error;
 use std::fmt;
 use crate::prices::MtgjsonPrices;
 
-// Module declarations
+// Module declarations - only for properly implemented providers
 pub mod abstract_provider;
 pub mod cardhoarder;
 pub mod cardkingdom;
 pub mod cardmarket;
 pub mod edhrec;
-pub mod gatherer;
-pub mod github_boosters;
-pub mod github_card_sealed_products;
-pub mod github_decks;
-pub mod github_mtgsqlite;
-pub mod github_sealed;
-pub mod mtgban;
 pub mod mtgwiki;
-pub mod multiversebridge;
 pub mod scryfall;
 pub mod tcgplayer;
 pub mod whats_in_standard;
@@ -33,46 +25,105 @@ pub use cardhoarder::CardHoarderProvider;
 pub use cardkingdom::CardKingdomProvider;
 pub use cardmarket::CardMarketProvider;
 pub use edhrec::EdhrecProviderCardRanks;
-pub use gatherer::GathererProvider;
-pub use github_boosters::GitHubBoostersProvider;
-pub use github_card_sealed_products::GitHubCardSealedProductsProvider;
-pub use github_decks::GitHubDecksProvider;
-pub use github_mtgsqlite::GitHubMTGSqliteProvider;
-pub use github_sealed::GitHubSealedProvider;
-pub use mtgban::MTGBanProvider;
 pub use mtgwiki::MtgWikiProviderSecretLair;
-pub use multiversebridge::MultiverseBridgeProvider;
 pub use scryfall::ScryfallProvider;
 pub use tcgplayer::TCGPlayerProvider;
 pub use whats_in_standard::WhatsInStandardProvider;
 pub use wizards::WizardsProvider;
 
-/// Custom error type for provider operations
+// Error types
 #[derive(Debug)]
 pub enum ProviderError {
-    NetworkError(String),
+    HttpError(reqwest::Error),
     ParseError(String),
-    AuthError(String),
-    RateLimitError(String),
     ConfigError(String),
+    RateLimitError(String),
+    AuthenticationError(String),
 }
 
 impl fmt::Display for ProviderError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ProviderError::NetworkError(msg) => write!(f, "Network error: {}", msg),
-            ProviderError::ParseError(msg) => write!(f, "Parse error: {}", msg),
-            ProviderError::AuthError(msg) => write!(f, "Authentication error: {}", msg),
-            ProviderError::RateLimitError(msg) => write!(f, "Rate limit error: {}", msg),
-            ProviderError::ConfigError(msg) => write!(f, "Configuration error: {}", msg),
+            ProviderError::HttpError(e) => write!(f, "HTTP error: {}", e),
+            ProviderError::ParseError(e) => write!(f, "Parse error: {}", e),
+            ProviderError::ConfigError(e) => write!(f, "Config error: {}", e),
+            ProviderError::RateLimitError(e) => write!(f, "Rate limit error: {}", e),
+            ProviderError::AuthenticationError(e) => write!(f, "Authentication error: {}", e),
         }
     }
 }
 
 impl Error for ProviderError {}
 
-/// Result type for provider operations
+impl From<reqwest::Error> for ProviderError {
+    fn from(error: reqwest::Error) -> Self {
+        ProviderError::HttpError(error)
+    }
+}
+
 pub type ProviderResult<T> = Result<T, ProviderError>;
+
+// Base provider implementation
+#[derive(Clone)]
+pub struct BaseProvider {
+    pub class_id: String,
+    pub client: Client,
+    pub headers: HashMap<String, String>,
+}
+
+impl BaseProvider {
+    pub fn new(class_id: String, headers: HashMap<String, String>) -> Self {
+        let mut default_headers = reqwest::header::HeaderMap::new();
+        
+        // Add custom headers
+        for (key, value) in &headers {
+            if let (Ok(name), Ok(val)) = (
+                reqwest::header::HeaderName::from_bytes(key.as_bytes()),
+                reqwest::header::HeaderValue::from_str(value)
+            ) {
+                default_headers.insert(name, val);
+            }
+        }
+
+        let client = Client::builder()
+            .default_headers(default_headers)
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .unwrap();
+
+        BaseProvider {
+            class_id,
+            client,
+            headers,
+        }
+    }
+
+    pub async fn get(&self, url: &str, params: Option<HashMap<String, String>>) -> ProviderResult<reqwest::Response> {
+        let mut request = self.client.get(url);
+        
+        if let Some(query_params) = params {
+            request = request.query(&query_params);
+        }
+        
+        let response = request.send().await?;
+        Ok(response)
+    }
+
+    pub async fn post(&self, url: &str, body: Option<&str>) -> ProviderResult<reqwest::Response> {
+        let mut request = self.client.post(url);
+        
+        if let Some(body_content) = body {
+            request = request.body(body_content.to_string());
+        }
+        
+        let response = request.send().await?;
+        Ok(response)
+    }
+
+    pub fn today_date(&self) -> String {
+        chrono::Utc::now().format("%Y-%m-%d").to_string()
+    }
+}
 
 /// Price field name helper function
 pub fn get_price_field_name(is_foil: bool, is_etched: bool, is_sell: bool) -> &'static str {
@@ -94,15 +145,7 @@ pub fn providers(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<CardKingdomProvider>()?;
     m.add_class::<CardMarketProvider>()?;
     m.add_class::<EdhrecProviderCardRanks>()?;
-    m.add_class::<GathererProvider>()?;
-    m.add_class::<GitHubBoostersProvider>()?;
-    m.add_class::<GitHubCardSealedProductsProvider>()?;
-    m.add_class::<GitHubDecksProvider>()?;
-    m.add_class::<GitHubMTGSqliteProvider>()?;
-    m.add_class::<GitHubSealedProvider>()?;
-    m.add_class::<MTGBanProvider>()?;
     m.add_class::<MtgWikiProviderSecretLair>()?;
-    m.add_class::<MultiverseBridgeProvider>()?;
     m.add_class::<ScryfallProvider>()?;
     m.add_class::<TCGPlayerProvider>()?;
     m.add_class::<WhatsInStandardProvider>()?;

@@ -25,139 +25,147 @@ impl WhatsInStandardProvider {
         let headers = HashMap::new();
         let base = BaseProvider::new("standard".to_string(), headers);
         
-        let mut provider = Self {
+        let mut provider = WhatsInStandardProvider {
             base,
             set_codes: HashSet::new(),
             standard_legal_sets: HashSet::new(),
         };
         
         // Initialize set codes
-        let runtime = tokio::runtime::Runtime::new()?;
-        provider.set_codes = runtime.block_on(async {
-            provider.standard_legal_set_codes().await
-        }).unwrap_or_default();
+        provider.set_codes = provider.standard_legal_set_codes()?;
         
         Ok(provider)
     }
-    
-    /// Get all set codes from sets that are currently legal in Standard
-    pub fn standard_legal_set_codes(&self) -> PyResult<HashSet<String>> {
-        let runtime = tokio::runtime::Runtime::new()?;
-        runtime.block_on(async {
-            self.standard_legal_set_codes_async().await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Standard sets error: {}", e)))
-    }
-}
 
-impl WhatsInStandardProvider {
-    async fn standard_legal_set_codes_async(&self) -> ProviderResult<HashSet<String>> {
+    /// Build HTTP header (returns empty dict)
+    pub fn _build_http_header(&self) -> PyResult<HashMap<String, String>> {
+        Ok(HashMap::new())
+    }
+
+    /// Download content from Whats in Standard
+    /// API calls always return JSON from them
+    pub fn download(&mut self, url: String, params: Option<HashMap<String, String>>) -> PyResult<Value> {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let mut retry_count = 0;
+            let max_retries = 5;
+            
+            loop {
+                match self.base.get(&url, params.clone()).await {
+                    Ok(response) => {
+                        if response.status().is_success() {
+                            let json: Value = response.json().await.map_err(|e| {
+                                PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("JSON parse error: {}", e))
+                            })?;
+                            return Ok(json);
+                        } else {
+                            println!("WhatsInStandard Download Error ({}): {}", response.status(), response.status());
+                            if retry_count < max_retries {
+                                retry_count += 1;
+                                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                                continue;
+                            } else {
+                                return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                                    format!("Max retries exceeded for URL: {}", url)
+                                ));
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        if retry_count < max_retries {
+                            retry_count += 1;
+                            println!("WhatsInStandard connection error, retrying: {}", e);
+                            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                            continue;
+                        } else {
+                            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                                format!("Request error after retries: {}", e)
+                            ));
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    /// Get all set codes from sets that are currently legal in Standard
+    pub fn standard_legal_set_codes(&mut self) -> PyResult<HashSet<String>> {
         if !self.standard_legal_sets.is_empty() {
             return Ok(self.standard_legal_sets.clone());
         }
-        
-        let api_response = self.download(Self::API_ENDPOINT, None).await?;
-        let sets = api_response.get("sets")
-            .and_then(|v| v.as_array())
-            .unwrap_or(&vec![]);
-        
-        let now = Utc::now();
+
+        let api_response = self.download(Self::API_ENDPOINT.to_string(), None)?;
         let mut standard_set_codes = HashSet::new();
         
-        for set_object in sets {
-            let code = set_object.get("code")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_uppercase();
-            
-            let enter_date = set_object.get("enterDate")
-                .and_then(|v| v.get("exact"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("9999");
-            
-            let exit_date = set_object.get("exitDate")
-                .and_then(|v| v.get("exact"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("9999");
-            
-            // Parse dates
-            let enter_parsed = if enter_date == "9999" {
-                DateTime::<Utc>::MAX_UTC
-            } else {
-                DateTime::parse_from_rfc3339(&format!("{}T00:00:00Z", enter_date))
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or(DateTime::<Utc>::MIN_UTC)
-            };
-            
-            let exit_parsed = if exit_date == "9999" {
-                DateTime::<Utc>::MAX_UTC
-            } else {
-                DateTime::parse_from_rfc3339(&format!("{}T00:00:00Z", exit_date))
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or(DateTime::<Utc>::MAX_UTC)
-            };
-            
-            if enter_parsed <= now && now <= exit_parsed {
-                standard_set_codes.insert(code);
+        if let Some(sets) = api_response.get("sets") {
+            if let Some(sets_array) = sets.as_array() {
+                let now = Utc::now();
+                
+                for set_object in sets_array {
+                    if let Some(set_obj) = set_object.as_object() {
+                        // Get set code
+                        if let Some(code) = set_obj.get("code").and_then(|v| v.as_str()) {
+                            // Parse enter date
+                            let enter_date = set_obj.get("enterDate")
+                                .and_then(|ed| ed.get("exact"))
+                                .and_then(|exact| exact.as_str())
+                                .and_then(|date_str| {
+                                    if date_str.is_empty() {
+                                        Some(DateTime::<Utc>::from_timestamp(9999999999, 0).unwrap())
+                                    } else {
+                                        date_str.parse::<DateTime<Utc>>().ok()
+                                    }
+                                });
+                            
+                            // Parse exit date  
+                            let exit_date = set_obj.get("exitDate")
+                                .and_then(|ed| ed.get("exact"))
+                                .and_then(|exact| exact.as_str())
+                                .and_then(|date_str| {
+                                    if date_str.is_empty() {
+                                        Some(DateTime::<Utc>::from_timestamp(9999999999, 0).unwrap())
+                                    } else {
+                                        date_str.parse::<DateTime<Utc>>().ok()
+                                    }
+                                });
+                            
+                            // Check if set is currently legal in standard
+                            if let (Some(enter), Some(exit)) = (enter_date, exit_date) {
+                                if enter <= now && now <= exit {
+                                    standard_set_codes.insert(code.to_uppercase());
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-        
+
+        self.standard_legal_sets = standard_set_codes.clone();
         Ok(standard_set_codes)
+    }
+
+    /// Get the set codes (property access)
+    #[getter]
+    pub fn get_set_codes(&self) -> PyResult<HashSet<String>> {
+        Ok(self.set_codes.clone())
+    }
+
+    /// Get the standard legal sets (property access)
+    #[getter]
+    pub fn get_standard_legal_sets(&self) -> PyResult<HashSet<String>> {
+        Ok(self.standard_legal_sets.clone())
     }
 }
 
 #[async_trait]
 impl AbstractProvider for WhatsInStandardProvider {
-    fn get_class_id(&self) -> &str {
-        &self.base.class_id
+    async fn download_async(&self, url: &str, params: Option<HashMap<String, String>>) -> ProviderResult<Response> {
+        self.base.get(url, params).await
     }
-    
-    fn get_class_name(&self) -> &str {
-        "WhatsInStandardProvider"
-    }
-    
-    fn build_http_header(&self) -> HashMap<String, String> {
-        HashMap::new()
-    }
-    
-    async fn download(&self, url: &str, params: Option<HashMap<String, String>>) -> ProviderResult<Value> {
-        let response = self.base.get_request(url, params).await?;
-        
-        if !response.status().is_success() {
-            eprintln!("WhatsInStandard Download Error ({}): {}", 
-                     response.status(), 
-                     response.text().await.unwrap_or_default());
-            
-            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-            return self.download(url, None).await;
-        }
-        
-        response.json().await.map_err(|e| {
-            ProviderError::ParseError(format!("JSON parse error: {}", e))
-        })
-    }
-    
-    async fn download_raw(&self, url: &str, params: Option<HashMap<String, String>>) -> ProviderResult<String> {
-        self.base.download_text(url, params).await
-    }
-    
-    fn log_download(&self, response: &Response) {
-        println!("Downloaded {} (Status: {})", response.url(), response.status());
-    }
-    
-    fn generic_generate_today_price_dict(
-        &self,
-        _third_party_to_mtgjson: &HashMap<String, HashSet<String>>,
-        _price_data_rows: &[Value],
-        _card_platform_id_key: &str,
-        _default_prices_object: &MtgjsonPrices,
-        _foil_key: &str,
-        _retail_key: Option<&str>,
-        _retail_quantity_key: Option<&str>,
-        _buy_key: Option<&str>,
-        _buy_quantity_key: Option<&str>,
-        _etched_key: Option<&str>,
-        _etched_value: Option<&str>,
-    ) -> HashMap<String, MtgjsonPrices> {
-        HashMap::new()
+
+    async fn generate_today_price_dict(&self, _all_printings_path: &str) -> ProviderResult<HashMap<String, MtgjsonPrices>> {
+        // WhatsInStandard doesn't provide price data
+        Ok(HashMap::new())
     }
 }

@@ -42,64 +42,38 @@ mod translations;
 mod utils;
 
 // High-computational modules
-mod output_generator;
-mod parallel_call;
-mod price_builder;
-mod set_builder;
-
-// Compiled classes
-mod compiled_classes;
-
-// Providers module
+mod output_manager;
 mod providers;
 
-// Import all the structs
-use card::MtgjsonCard;
-use deck::{MtgjsonDeck, MtgjsonDeckHeader};
-use foreign_data::MtgjsonForeignData;
-use game_formats::MtgjsonGameFormats;
-use identifiers::MtgjsonIdentifiers;
-use leadership_skills::MtgjsonLeadershipSkills;
-use legalities::MtgjsonLegalities;
-use meta::MtgjsonMeta;
-use prices::MtgjsonPrices;
-use purchase_urls::MtgjsonPurchaseUrls;
-use related_cards::MtgjsonRelatedCards;
-use rulings::MtgjsonRuling;
-use sealed_product::{MtgjsonSealedProduct, SealedProductCategory, SealedProductSubtype};
-use set::MtgjsonSet;
-use translations::MtgjsonTranslations;
+// Public re-exports
+pub use base::*;
+pub use card::*;
+pub use deck::*;
+pub use foreign_data::*;
+pub use game_formats::*;
+pub use identifiers::*;
+pub use leadership_skills::*;
+pub use legalities::*;
+pub use meta::*;
+pub use prices::*;
+pub use purchase_urls::*;
+pub use related_cards::*;
+pub use rulings::*;
+pub use sealed_product::*;
+pub use set::*;
+pub use translations::*;
+pub use utils::*;
 
-// Import compiled classes
-use compiled_classes::{
-    MtgjsonStructures, MtgjsonCompiledList, MtgjsonDeckList, 
-    MtgjsonKeywords, MtgjsonAllIdentifiers, MtgjsonAllPrintings,
-    MtgjsonAtomicCards, MtgjsonCardTypes, MtgjsonEnumValues,
-    MtgjsonSetList, MtgjsonTcgplayerSkus
-};
+pub use output_manager::*;
+pub use providers::*;
 
-// Import providers with correct names
-use providers::{
-    CardHoarderProvider, CardKingdomProvider, CardMarketProvider, EdhrecProviderCardRanks,
-    GathererProvider, GitHubBoostersProvider, GitHubCardSealedProductsProvider,
-    GitHubDecksProvider, GitHubMTGSqliteProvider, GitHubSealedProvider,
-    MTGBanProvider, MtgWikiProviderSecretLair, MultiverseBridgeProvider,
-    ScryfallProvider, TCGPlayerProvider, WhatsInStandardProvider, WizardsProvider
-};
-
-/// Python module definition
+/// Python module initialization
 #[pymodule]
 fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // Add the JSON value wrapper
+    // Add base data structures
     m.add_class::<JsonValue>()?;
-    
-    // Add the parallel_call function (Python-compatible API)
-    m.add_function(wrap_pyfunction!(parallel_call::parallel_call, m)?)?;
-    
-    // Add all MTGJSON classes
     m.add_class::<MtgjsonCard>()?;
     m.add_class::<MtgjsonDeck>()?;
-    m.add_class::<MtgjsonDeckHeader>()?;
     m.add_class::<MtgjsonForeignData>()?;
     m.add_class::<MtgjsonGameFormats>()?;
     m.add_class::<MtgjsonIdentifiers>()?;
@@ -109,57 +83,24 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<MtgjsonPrices>()?;
     m.add_class::<MtgjsonPurchaseUrls>()?;
     m.add_class::<MtgjsonRelatedCards>()?;
-    m.add_class::<MtgjsonRuling>()?;
+    m.add_class::<MtgjsonRulings>()?;
     m.add_class::<MtgjsonSealedProduct>()?;
     m.add_class::<MtgjsonSet>()?;
     m.add_class::<MtgjsonTranslations>()?;
+
+    // Add output manager
+    m.add_class::<OutputManager>()?;
     
-    // Add enums
-    m.add_class::<SealedProductCategory>()?;
-    m.add_class::<SealedProductSubtype>()?;
-    
-    // Add compiled classes
-    m.add_class::<MtgjsonStructures>()?;
-    m.add_class::<MtgjsonCompiledList>()?;
-    m.add_class::<MtgjsonDeckList>()?;
-    m.add_class::<MtgjsonKeywords>()?;
-    m.add_class::<MtgjsonAllIdentifiers>()?;
-    m.add_class::<MtgjsonAllPrintings>()?;
-    m.add_class::<MtgjsonAtomicCards>()?;
-    m.add_class::<MtgjsonCardTypes>()?;
-    m.add_class::<MtgjsonEnumValues>()?;
-    m.add_class::<MtgjsonSetList>()?;
-    m.add_class::<MtgjsonTcgplayerSkus>()?;
-    
-    // Add high-performance modules
-    m.add_class::<output_generator::OutputGenerator>()?;
-    m.add_class::<price_builder::PriceBuilder>()?;
-    
-    // Add legacy parallel classes (deprecated but for compatibility)
-    m.add_class::<parallel_call::ParallelProcessor>()?;
-    m.add_class::<parallel_call::ParallelIterator>()?;
-    
-    // Add all provider classes with correct names
+    // Add properly implemented providers
     m.add_class::<CardHoarderProvider>()?;
     m.add_class::<CardKingdomProvider>()?;
     m.add_class::<CardMarketProvider>()?;
     m.add_class::<EdhrecProviderCardRanks>()?;
-    m.add_class::<GathererProvider>()?;
-    m.add_class::<GitHubBoostersProvider>()?;
-    m.add_class::<GitHubCardSealedProductsProvider>()?;
-    m.add_class::<GitHubDecksProvider>()?;
-    m.add_class::<GitHubMTGSqliteProvider>()?;
-    m.add_class::<GitHubSealedProvider>()?;
-    m.add_class::<MTGBanProvider>()?;
     m.add_class::<MtgWikiProviderSecretLair>()?;
-    m.add_class::<MultiverseBridgeProvider>()?;
     m.add_class::<ScryfallProvider>()?;
     m.add_class::<TCGPlayerProvider>()?;
     m.add_class::<WhatsInStandardProvider>()?;
     m.add_class::<WizardsProvider>()?;
-    
-    // Add utility modules (SetBuilder not ready yet)
-    // m.add_class::<set_builder::SetBuilder>()?;
-    
+
     Ok(())
 }

@@ -24,89 +24,109 @@ impl MtgWikiProviderSecretLair {
         let headers = headers.unwrap_or_default();
         let base = BaseProvider::new("mtgwiki".to_string(), headers);
         
-        Ok(Self { base })
+        Ok(MtgWikiProviderSecretLair {
+            base,
+        })
     }
-    
-    /// Download MTG.Wiki Secret Lair page and parse it
-    pub fn download(&self, url: Option<&str>, params: Option<HashMap<String, String>>) -> PyResult<HashMap<String, String>> {
-        let runtime = tokio::runtime::Runtime::new()?;
-        runtime.block_on(async {
-            self.download_async(url, params).await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Download error: {}", e)))
-    }
-}
 
-impl MtgWikiProviderSecretLair {
-    async fn download_async(&self, url: Option<&str>, params: Option<HashMap<String, String>>) -> ProviderResult<HashMap<String, String>> {
-        let url_to_use = url.unwrap_or(Self::PAGE_URL);
-        let response_text = self.download_raw(url_to_use, params).await?;
-        self.parse_secret_lair_table(&response_text)
+    /// Build HTTP header (returns empty dict)
+    pub fn _build_http_header(&self) -> PyResult<HashMap<String, String>> {
+        Ok(HashMap::new())
     }
-    
-    fn parse_secret_lair_table(&self, page_text: &str) -> ProviderResult<HashMap<String, String>> {
+
+    /// Download MTG.Wiki Secret Lair page and parse it out for user consumption
+    /// Returns mapping of Card ID to Secret Lair Drop Name
+    pub fn download(&mut self, url: Option<String>, params: Option<HashMap<String, String>>) -> PyResult<HashMap<String, String>> {
+        let target_url = url.unwrap_or_else(|| Self::PAGE_URL.to_string());
+        
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            match self.base.get(&target_url, params).await {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        let page_text = response.text().await.map_err(|e| {
+                            PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Text parse error: {}", e))
+                        })?;
+                        
+                        Ok(self.parse_secret_lair_table(page_text)?)
+                    } else {
+                        println!("Error downloading MTG Wiki data: {}", response.status());
+                        Ok(HashMap::new())
+                    }
+                },
+                Err(e) => {
+                    println!("Error downloading MTG Wiki data: {}", e);
+                    Ok(HashMap::new())
+                }
+            }
+        })
+    }
+
+    /// Parse the Secret Lair table from the MTG Wiki page
+    fn parse_secret_lair_table(&self, page_text: String) -> PyResult<HashMap<String, String>> {
         let mut results = HashMap::new();
         
-        let document = Html::parse_document(page_text);
-        let table_selector = Selector::parse("table.wikitable.sortable").map_err(|_| {
-            ProviderError::ParseError("Invalid table selector".to_string())
-        })?;
-        
-        let row_selector = Selector::parse("tr").map_err(|_| {
-            ProviderError::ParseError("Invalid row selector".to_string())
-        })?;
-        
-        let col_selector = Selector::parse("td").map_err(|_| {
-            ProviderError::ParseError("Invalid column selector".to_string())
-        })?;
+        let document = Html::parse_document(&page_text);
+        let table_selector = Selector::parse("table.wikitable.sortable").unwrap();
         
         if let Some(table) = document.select(&table_selector).next() {
-            let table_rows: Vec<_> = table.select(&row_selector).collect();
+            let row_selector = Selector::parse("tr").unwrap();
+            let rows: Vec<_> = table.select(&row_selector).collect();
             
-            for (index, table_row) in table_rows.iter().enumerate().skip(1) { // Skip header row
+            for (index, table_row) in rows.iter().enumerate().skip(1) { // Skip header row
+                let col_selector = Selector::parse("td").unwrap();
                 let table_cols: Vec<_> = table_row.select(&col_selector).collect();
+                
+                if table_cols.is_empty() {
+                    continue;
+                }
                 
                 let mut extra_card_numbers = String::new();
                 
-                if !table_cols.is_empty() {
-                    let first_col_html = table_cols[0].html();
-                    if first_col_html.contains("rowspan") {
-                        // We have multiple segments split up
-                        if index + 1 < table_rows.len() {
-                            let next_tr_cols: Vec<_> = table_rows[index + 1].select(&col_selector).collect();
-                            if !next_tr_cols.is_empty() {
-                                extra_card_numbers = format!(",{}", next_tr_cols[0].inner_html().trim());
+                // Check for rowspan (multiple segments)
+                if let Some(first_col) = table_cols.get(0) {
+                    if first_col.value().attr("rowspan").is_some() && index + 1 < rows.len() {
+                        // Get the next row's first column for extra card numbers
+                        if let Some(next_row) = rows.get(index + 1) {
+                            let next_cols: Vec<_> = next_row.select(&col_selector).collect();
+                            if let Some(next_first_col) = next_cols.get(0) {
+                                extra_card_numbers = format!(",{}", next_first_col.inner_html().trim());
                             }
                         }
-                    } else if table_cols.len() < 3 {
-                        continue;
                     }
                 }
                 
-                if table_cols.len() >= 3 {
-                    let secret_lair_name = table_cols[1].inner_html().trim().to_string();
-                    let card_numbers_text = format!("{}{}", table_cols[2].inner_html().trim(), extra_card_numbers);
-                    let card_numbers = self.convert_range_to_page_style(&card_numbers_text);
-                    
-                    if !secret_lair_name.is_empty() && !card_numbers.is_empty() {
-                        for card_num in card_numbers {
-                            results.insert(card_num.to_string(), secret_lair_name.clone());
-                        }
-                    }
+                if table_cols.len() < 3 {
+                    continue;
+                }
+                
+                let secret_lair_name = table_cols[1].inner_html().trim().to_string();
+                let card_numbers_text = format!("{}{}", table_cols[2].inner_html().trim(), extra_card_numbers);
+                
+                let card_numbers = Self::convert_range_to_page_style(&card_numbers_text)?;
+                
+                if secret_lair_name.is_empty() || card_numbers.is_empty() {
+                    continue;
+                }
+                
+                for card_num in card_numbers {
+                    results.insert(card_num.to_string(), secret_lair_name.clone());
                 }
             }
         }
         
         Ok(results)
     }
-    
-    fn convert_range_to_page_style(&self, range_string: &str) -> Vec<i32> {
-        let re = Regex::new(r"[0123456789\-,]").unwrap();
+
+    /// Convert range string to list of numbers
+    fn convert_range_to_page_style(range_string: &str) -> PyResult<Vec<i32>> {
+        // Filter to keep only digits, hyphens, and commas
         let filtered: String = range_string.chars()
-            .filter(|c| re.is_match(&c.to_string()))
+            .filter(|c| "0123456789-,".contains(*c))
             .collect();
         
         if filtered.is_empty() {
-            return vec![];
+            return Ok(Vec::new());
         }
         
         let mut result = Vec::new();
@@ -121,12 +141,14 @@ impl MtgWikiProviderSecretLair {
                         }
                     }
                 }
-            } else if let Ok(num) = part.parse::<i32>() {
-                result.push(num);
+            } else if !part.is_empty() {
+                if let Ok(num) = part.parse::<i32>() {
+                    result.push(num);
+                }
             }
         }
         
-        result
+        Ok(result)
     }
 }
 
@@ -173,5 +195,14 @@ impl AbstractProvider for MtgWikiProviderSecretLair {
         _etched_value: Option<&str>,
     ) -> HashMap<String, MtgjsonPrices> {
         HashMap::new()
+    }
+
+    async fn download_async(&self, url: &str, params: Option<HashMap<String, String>>) -> ProviderResult<Response> {
+        self.base.get(url, params).await
+    }
+
+    async fn generate_today_price_dict(&self, _all_printings_path: &str) -> ProviderResult<HashMap<String, MtgjsonPrices>> {
+        // MTG Wiki doesn't provide price data
+        Ok(HashMap::new())
     }
 }
