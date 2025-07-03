@@ -21,44 +21,38 @@ pub fn parallel_call(
     force_starmap: bool,
     pool_size: usize,
 ) -> PyResult<PyObject> {
-    // Validate pool size for optimal performance
-    let effective_pool_size = pool_size.clamp(1, 256);
-    
-    // Pre-allocate result storage based on input size
+    // Pre-flight validation and setup
     let args_len = args.len();
     if args_len == 0 {
-        return Ok(PyList::empty_bound(py).to_object(py));
+        return Ok(PyList::empty(py).to_object(py));
     }
     
-    // Create optimized Tokio runtime with custom configuration
+    // Create async runtime with optimized settings
     let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(effective_pool_size.min(num_cpus::get()))
-        .max_blocking_threads(effective_pool_size)
-        .enable_all()
+        .worker_threads(pool_size.min(num_cpus::get()).max(1))
+        .enable_time()
+        .enable_io()
+        .thread_name("mtgjson-parallel")
         .build()
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-            format!("Failed to create optimized runtime: {}", e)
+            format!("Failed to create async runtime: {}", e)
         ))?;
     
-    rt.block_on(async {
-        // Use Arc for efficient sharing across tasks
-        let semaphore = Arc::new(Semaphore::new(effective_pool_size));
+    // Execute async parallel processing
+    rt.block_on(async move {
+        // Create semaphore for concurrency control with backpressure
+        let semaphore = Arc::new(Semaphore::new(pool_size));
         let mut join_set = JoinSet::new();
         
-        // Convert repeatable arguments to PyObjects if provided
-        let repeat_objects: Option<Vec<PyObject>> = repeatable_args.map(|args| {
-            args.iter().map(|arg| arg.to_object(py)).collect()
-        });
-        
-        // Process tasks based on configuration for optimal performance
-        match (&repeat_objects, force_starmap) {
+        // Optimized dispatch based on parameter combinations
+        match (repeatable_args, force_starmap) {
             (Some(repeat_args), false) => {
                 // With repeatable arguments: function(arg, *repeatable_args)
                 
                 for arg in args.iter() {
-                    let func_ref = function.clone_ref(py);
+                    let func_ref = function.clone();
                     let arg_obj = arg.to_object(py);
-                    let repeat_clone: Vec<PyObject> = repeat_args.iter().map(|obj| obj.clone_ref(py)).collect();
+                    let repeat_clone: Vec<PyObject> = repeat_args.iter().cloned().collect();
                     let permit = Arc::clone(&semaphore);
                     
                     join_set.spawn(async move {
@@ -69,13 +63,12 @@ pub fn parallel_call(
                         )?;
                         
                         Python::with_gil(|py| -> PyResult<PyObject> {
-                            // Build argument tuple efficiently
-                            let mut call_args = Vec::<PyObject>::with_capacity(1 + repeat_clone.len());
-                            call_args.push(arg_obj);
+                            // Build argument list: [arg] + repeatable_args
+                            let mut call_args = vec![arg_obj];
                             call_args.extend(repeat_clone);
                             
                             // Convert to PyTuple for function call
-                            let args_tuple = PyTuple::new_bound(py, &call_args);
+                            let args_tuple = PyTuple::new(py, &call_args);
                             
                             // Call function(*g_args) matching Python behavior
                             func_ref.call1(py, args_tuple)
@@ -87,9 +80,9 @@ pub fn parallel_call(
                 // With repeatable arguments and starmap: function(*arg, *repeatable_args)
                 
                 for arg in args.iter() {
-                    let func_ref = function.clone_ref(py);
+                    let func_ref = function.clone();
                     let arg_obj = arg.to_object(py);
-                    let repeat_clone: Vec<PyObject> = repeat_args.iter().map(|obj| obj.clone_ref(py)).collect();
+                    let repeat_clone: Vec<PyObject> = repeat_args.iter().cloned().collect();
                     let permit = Arc::clone(&semaphore);
                     
                     join_set.spawn(async move {
@@ -105,19 +98,19 @@ pub fn parallel_call(
                                 let mut all_args = Vec::new();
                                 all_args.extend(tuple_arg.iter().map(|item| item.to_object(py)));
                                 all_args.extend(repeat_clone);
-                                let args_tuple = PyTuple::new_bound(py, &all_args);
+                                let args_tuple = PyTuple::new(py, &all_args);
                                 func_ref.call1(py, args_tuple)
                             } else if let Ok(list_arg) = arg_obj.downcast_bound::<PyList>(py) {
                                 let mut all_args = Vec::new();
                                 all_args.extend(list_arg.iter().map(|item| item.to_object(py)));
                                 all_args.extend(repeat_clone);
-                                let args_tuple = PyTuple::new_bound(py, &all_args);
+                                let args_tuple = PyTuple::new(py, &all_args);
                                 func_ref.call1(py, args_tuple)
                             } else {
                                 // Single argument case with repeatable args
                                 let mut all_args = vec![arg_obj];
                                 all_args.extend(repeat_clone);
-                                let args_tuple = PyTuple::new_bound(py, &all_args);
+                                let args_tuple = PyTuple::new(py, &all_args);
                                 func_ref.call1(py, args_tuple)
                             }
                         })
@@ -127,7 +120,7 @@ pub fn parallel_call(
             (None, true) => {
                 // Optimized starmap case
                 for arg in args.iter() {
-                    let func_ref = function.clone_ref(py);
+                    let func_ref = function.clone();
                     let arg_obj = arg.to_object(py);
                     let permit = Arc::clone(&semaphore);
                     
@@ -143,7 +136,7 @@ pub fn parallel_call(
                             if let Ok(tuple_arg) = arg_obj.downcast_bound::<PyTuple>(py) {
                                 func_ref.call1(py, tuple_arg)
                             } else if let Ok(list_arg) = arg_obj.downcast_bound::<PyList>(py) {
-                                let tuple_arg = PyTuple::new_bound(py, list_arg.iter());
+                                let tuple_arg = PyTuple::new(py, list_arg.iter());
                                 func_ref.call1(py, tuple_arg)
                             } else {
                                 // Single argument case
@@ -156,7 +149,7 @@ pub fn parallel_call(
             (None, false) => {
                 // Optimized normal case: function(arg)
                 for arg in args.iter() {
-                    let func_ref = function.clone_ref(py);
+                    let func_ref = function.clone();
                     let arg_obj = arg.to_object(py);
                     let permit = Arc::clone(&semaphore);
                     
@@ -211,7 +204,7 @@ pub fn parallel_call(
                 optimize_fold_dict(py, results)
             } else {
                 // Return results as optimized list
-                Ok(PyList::new_bound(py, results).to_object(py))
+                Ok(PyList::new(py, results).to_object(py))
             }
         })
     })
@@ -248,14 +241,14 @@ fn optimize_fold_list(py: Python, results: Vec<PyObject>) -> PyResult<PyObject> 
         }
     }
     
-    Ok(PyList::new_bound(py, flattened).to_object(py))
+    Ok(PyList::new(py, flattened).to_object(py))
 }
 
 /// Optimized dictionary merging with efficient key-value handling
 #[inline]
 fn optimize_fold_dict(py: Python, results: Vec<PyObject>) -> PyResult<PyObject> {
     // Use PyDict directly for maximum performance
-    let result_dict = PyDict::new_bound(py);
+    let result_dict = PyDict::new(py);
     
     for result in results {
         if let Ok(dict) = result.downcast_bound::<PyDict>(py) {
@@ -313,7 +306,7 @@ impl BatchProcessor {
     ) -> PyResult<PyObject> {
         let data_len = data.len();
         if data_len == 0 {
-            return Ok(PyList::empty_bound(py).to_object(py));
+            return Ok(PyList::empty(py).to_object(py));
         }
         
         // Calculate optimal chunk size based on data size and pool size
@@ -334,12 +327,12 @@ impl BatchProcessor {
                 .take(end - start)
                 .map(|item| item.to_object(py))
                 .collect();
-            chunks.push(PyList::new_bound(py, chunk).to_object(py));
+            chunks.push(PyList::new(py, chunk).to_object(py));
             start = end;
         }
         
         // Process chunks in parallel using optimized parallel_call
-        let chunks_list = PyList::new_bound(py, chunks);
+        let chunks_list = PyList::new(py, chunks);
         parallel_call(
             py,
             function,
@@ -382,7 +375,7 @@ impl AsyncTaskQueue {
     ) -> PyResult<PyObject> {
         let task_count = tasks.len();
         if task_count == 0 {
-            return Ok(PyList::empty_bound(py).to_object(py));
+            return Ok(PyList::empty(py).to_object(py));
         }
         
         // Use parallel_call with optimized parameters
@@ -469,10 +462,10 @@ impl CardBuildProcessor {
         // Zip foreign URLs with card info for parallel processing
         let combined_args: Vec<PyObject> = foreign_urls.iter()
             .zip(card_info.iter())
-            .map(|(url, info)| PyTuple::new_bound(py, &[url.to_object(py), info.to_object(py)]).to_object(py))
+            .map(|(url, info)| PyTuple::new(py, &[url.to_object(py), info.to_object(py)]).to_object(py))
             .collect();
         
-        let combined_list = PyList::new_bound(py, combined_args);
+        let combined_list = PyList::new(py, combined_args);
         
         parallel_call(
             py,
@@ -565,7 +558,7 @@ mod tests {
             let func = module.getattr("test_func").unwrap().to_object(py);
             
             // Create test data
-            let data = PyList::new_bound(py, &[1, 2, 3, 4, 5]);
+            let data = PyList::new(py, &[1, 2, 3, 4, 5]);
             
             // Test parallel execution
             let result = parallel_call(
@@ -593,7 +586,7 @@ mod tests {
             let module = pyo3::types::PyModule::from_code_bound(py, code, "test.py", "test").unwrap();
             let func = module.getattr("list_func").unwrap().to_object(py);
             
-            let data = PyList::new_bound(py, &[1, 2, 3]);
+            let data = PyList::new(py, &[1, 2, 3]);
             
             let result = parallel_call(
                 py,
@@ -620,7 +613,7 @@ mod tests {
             let module = pyo3::types::PyModule::from_code_bound(py, code, "test.py", "test").unwrap();
             let func = module.getattr("batch_func").unwrap().to_object(py);
             
-            let data = PyList::new_bound(py, &(1..=25).collect::<Vec<_>>());
+            let data = PyList::new(py, &(1..=25).collect::<Vec<_>>());
             
             let result = processor.process_batch(py, func, &data, None).unwrap();
             let result_list = result.downcast_bound::<PyList>(py).unwrap();

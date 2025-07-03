@@ -30,7 +30,7 @@ pub fn get_set_translation_data(set_name: &str) -> PyResult<Option<HashMap<Strin
 
 /// Build MTGJSON set from provided set data
 #[pyfunction]
-pub fn build_mtgjson_set_from_data(_py: Python, _set_data: String) -> PyResult<Option<MtgjsonSetObject>> {
+pub fn build_mtgjson_set_from_data(_py: Python, _set_data: String) -> PyResult<Option<HashMap<String, String>>> {
     // This would build a set from provided set data JSON string
     // Implementation would be similar to build_mtgjson_set but with provided data
     

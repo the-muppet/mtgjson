@@ -43,15 +43,24 @@ pub struct MtgjsonForeignDataObject {
 #[pymethods]
 impl MtgjsonForeignDataObject {
     #[new]
-    pub fn new() -> Self {
+    #[pyo3(signature = (language, face_name=None, flavor_text=None, name=None, text=None, type_=None, multiverse_id=None))]
+    pub fn new(
+        language: String,
+        face_name: Option<String>,
+        flavor_text: Option<String>,
+        name: Option<String>,
+        text: Option<String>,
+        type_: Option<String>,
+        multiverse_id: Option<i32>,
+    ) -> Self {
         Self {
-            face_name: None,
-            flavor_text: None,
-            language: String::new(),
-            multiverse_id: None,
-            name: None,
-            text: None,
-            type_: None,
+            language,
+            face_name,
+            flavor_text,
+            name,
+            text,
+            type_,
+            multiverse_id,
             identifiers: MtgjsonIdentifiers::new(),
         }
     }
@@ -127,7 +136,7 @@ impl MtgjsonForeignDataObject {
 
 impl Default for MtgjsonForeignDataObject {
     fn default() -> Self {
-        Self::new()
+        Self::new(String::new(), None, None, None, None, None, None)
     }
 }
 
@@ -147,22 +156,22 @@ mod tests {
 
     #[test]
     fn test_foreign_data_creation() {
-        let foreign_data = MtgjsonForeignDataObject::new();
+        let foreign_data = MtgjsonForeignDataObject::new("English".to_string(), None, None, None, None, None, None);
         assert_eq!(foreign_data.face_name, None);
         assert_eq!(foreign_data.flavor_text, None);
-        assert_eq!(foreign_data.language, "");
+        assert_eq!(foreign_data.language, "English");
         assert_eq!(foreign_data.multiverse_id, None);
-        assert_eq!(foreign_data.name, "");
+        assert_eq!(foreign_data.name, None);
         assert_eq!(foreign_data.text, None);
         assert_eq!(foreign_data.type_, None);
     }
 
     #[test]
     fn test_foreign_data_setters() {
-        let mut foreign_data = MtgjsonForeignDataObject::new();
+        let mut foreign_data = MtgjsonForeignDataObject::default();
         
         foreign_data.language = "Japanese".to_string();
-        foreign_data.name = "稲妻".to_string();
+        foreign_data.name = Some("稲妻".to_string());
         foreign_data.text = Some("クリーチャー1体かプレイヤー1人を対象とする。稲妻はそれに3点のダメージを与える。".to_string());
         foreign_data.flavor_text = Some("雷の力".to_string());
         foreign_data.face_name = Some("表面".to_string());
@@ -170,7 +179,7 @@ mod tests {
         foreign_data.multiverse_id = Some(12345);
         
         assert_eq!(foreign_data.language, "Japanese");
-        assert_eq!(foreign_data.name, "稲妻");
+        assert_eq!(foreign_data.name, Some("稲妻".to_string()));
         assert_eq!(foreign_data.text, Some("クリーチャー1体かプレイヤー1人を対象とする。稲妻はそれに3点のダメージを与える。".to_string()));
         assert_eq!(foreign_data.flavor_text, Some("雷の力".to_string()));
         assert_eq!(foreign_data.face_name, Some("表面".to_string()));
@@ -180,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_foreign_data_languages() {
-        let mut foreign_data = MtgjsonForeignDataObject::new();
+        let mut foreign_data = MtgjsonForeignDataObject::default();
         
         // Test various languages
         let languages = vec![
