@@ -65,11 +65,11 @@ impl TCGPlayerProvider {
         }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("SKU data error: {}", e)))?;
         
         // Convert Vec<Value> to PyObject
-        let py_list = pyo3::types::PyList::empty(py);
+        let py_list = pyo3::types::PyList::empty_bound(py);
         for value in result {
             let json_str = serde_json::to_string(&value).map_err(|e| 
                 PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("JSON serialization error: {}", e)))?;
-            let py_dict = pyo3::types::PyModule::import(py, "json")?
+            let py_dict = pyo3::types::PyModule::import_bound(py, "json")?
                 .call_method1("loads", (json_str,))?;
             py_list.append(py_dict)?;
         }

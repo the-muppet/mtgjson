@@ -92,7 +92,7 @@ impl PriceBuilder {
         let mut archive_prices = HashMap::new();
         Python::with_gil(|py| {
             for (key, value) in &today_prices {
-                archive_prices.insert(key.clone(), value.clone());
+                archive_prices.insert(key.clone(), value.clone_ref(py));
             }
         });
         
@@ -150,7 +150,7 @@ impl PriceBuilder {
 impl Default for PriceBuilder {
     fn default() -> Self {
         Python::with_gil(|py| {
-            let empty_tuple = PyTuple::new(py, std::iter::empty::<PyObject>());
+            let empty_tuple = PyTuple::new_bound(py, std::iter::empty::<PyObject>());
             Self::new(&empty_tuple, None)
         })
     }

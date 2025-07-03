@@ -205,7 +205,7 @@ pub async fn parse_foreign_async(
             continue;
         }
 
-        let mut card_foreign_entry = MtgjsonForeignDataObject::new();
+        let mut card_foreign_entry = MtgjsonForeignDataObject::default();
         
         // Map language using constants
         if let Some(language) = constants.language_map.get(card_lang) {

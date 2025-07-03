@@ -112,7 +112,7 @@ impl WhatsInStandardProvider {
         let provider = Self {
             base,
             set_codes: Python::with_gil(|py| {
-                PySet::empty(py).to_object(py)
+                PySet::empty_bound(py).unwrap().to_object(py)
             }),
         };
         
@@ -126,7 +126,7 @@ impl WhatsInStandardProvider {
             })?;
             
             if let Some(cached_sets) = cache.get() {
-                let py_set = PySet::empty(py);
+                let py_set = PySet::empty_bound(py)?;
                 for set_code in cached_sets.iter() {
                     py_set.add(set_code)?;
                 }
@@ -154,7 +154,7 @@ impl WhatsInStandardProvider {
             cache.update(sets.clone());
         }
         
-        let py_set = PySet::empty(py);
+        let py_set = PySet::empty_bound(py)?;
         for set_code in sets.iter() {
             py_set.add(set_code)?;
         }
@@ -186,7 +186,7 @@ impl WhatsInStandardProvider {
             PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Cache lock error: {}", e))
         })?;
         
-        let stats_dict = PyDict::new(py);
+        let stats_dict = PyDict::new_bound(py);
         stats_dict.set_item("set_count", cache.sets.len())?;
         stats_dict.set_item("is_valid", cache.is_valid())?;
         stats_dict.set_item("age_seconds", cache.last_updated.elapsed().as_secs())?;
