@@ -54,7 +54,7 @@ impl CardKingdomProvider {
         runtime.block_on(async {
             self.update_sealed_urls_async(&mut sealed_products).await?;
             Ok(sealed_products)
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Sealed URLs error: {}", e)))
+        }).map_err(|e: Box<dyn std::error::Error>| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Sealed URLs error: {}", e)))
     }
 }
 

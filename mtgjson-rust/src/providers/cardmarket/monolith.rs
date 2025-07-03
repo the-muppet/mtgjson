@@ -86,8 +86,7 @@ impl CardMarketProvider {
     }
 
     /// Download from CardMarket JSON APIs
-    #[pyo3(signature = (py, url, params=None))]
-    pub fn download(&self, py: Python, url: String, params: Option<HashMap<String, String>>) -> PyResult<PyObject> {
+    pub fn download(&self, py: Python<'_>, url: String, params: Option<HashMap<String, String>>) -> PyResult<PyObject> {
         if !self.connection_available {
             let empty_dict = pyo3::types::PyDict::new_bound(py);
             return Ok(empty_dict.to_object(py));
@@ -252,8 +251,7 @@ impl CardMarketProvider {
     }
 
     /// Get MKM cards for a set with retry logic
-    #[pyo3(signature = (py, mcm_id=None))]
-    pub fn get_mkm_cards(&self, py: Python, mcm_id: Option<i32>) -> PyResult<PyObject> {
+    pub fn get_mkm_cards(&self, py: Python<'_>, mcm_id: Option<i32>) -> PyResult<PyObject> {
         if !self.connection_available || mcm_id.is_none() {
             let empty_dict = pyo3::types::PyDict::new_bound(py);
             return Ok(empty_dict.to_object(py));
@@ -331,7 +329,7 @@ impl CardMarketProvider {
     }
     
     /// Get MKM expansion data from API
-    pub fn get_mkm_expansion_data(&self, py: Python) -> PyResult<PyObject> {
+    pub fn get_mkm_expansion_data(&self, py: Python<'_>) -> PyResult<PyObject> {
         if !self.has_mkm_config() {
             eprintln!("Warning: MKM configuration not found");
             let empty_list = pyo3::types::PyList::empty_bound(py);
@@ -372,7 +370,7 @@ impl CardMarketProvider {
     }
     
     /// Get MKM expansion singles for a specific expansion
-    pub fn get_mkm_expansion_singles(&self, py: Python, expansion_id: i32) -> PyResult<PyObject> {
+    pub fn get_mkm_expansion_singles(&self, py: Python<'_>, expansion_id: i32) -> PyResult<PyObject> {
         if !self.has_mkm_config() {
             eprintln!("Warning: MKM configuration not found");
             let empty_list = pyo3::types::PyList::empty_bound(py);
@@ -436,8 +434,17 @@ impl CardMarketProvider {
         }
 
         let data = Python::with_gil(|py| self.download(py, self.price_guide_url.clone(), None))?;
+        
+        // Convert PyObject to serde_json::Value for processing
+        let data_json: Value = Python::with_gil(|py| -> PyResult<Value> {
+            // Convert PyObject to JSON string first, then parse
+            let json_str = py.import_bound("json")?.call_method1("dumps", (data,))?;
+            let json_string: String = json_str.extract()?;
+            serde_json::from_str(&json_string).map_err(|e| 
+                PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("JSON conversion error: {}", e)))
+        })?;
             
-        let price_guides = data.get("priceGuides")
+        let price_guides = data_json.get("priceGuides")
             .and_then(|v| v.as_array())
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("No priceGuides array found in response"))?;
         
@@ -479,9 +486,17 @@ impl CardMarketProvider {
             // For now, use placeholder URL
             let expansions_url = "https://api.cardmarket.com/ws/v2.0/expansions/1/singles".to_string();
             
-            match self.download(pyo3::Python::with_gil(|py| pyo3::types::PyDict::new(py)), expansions_url, None) {
+            match Python::with_gil(|py| self.download(py, expansions_url, None)) {
                 Ok(response) => {
-                    if let Some(expansions) = response.get("expansion").and_then(|v| v.as_array()) {
+                    // Convert PyObject to serde_json::Value for processing
+                    let response_json: Value = Python::with_gil(|py| -> PyResult<Value> {
+                        let json_str = py.import_bound("json")?.call_method1("dumps", (response,))?;
+                        let json_string: String = json_str.extract()?;
+                        serde_json::from_str(&json_string).map_err(|e| 
+                            PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("JSON conversion error: {}", e)))
+                    }).unwrap_or(Value::Object(Map::new()));
+                    
+                    if let Some(expansions) = response_json.get("expansion").and_then(|v| v.as_array()) {
                         for set_content in expansions {
                             if let Some(set_obj) = set_content.as_object() {
                                 if let (Some(name), Some(id)) = (

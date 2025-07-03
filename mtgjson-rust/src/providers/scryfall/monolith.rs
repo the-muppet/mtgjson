@@ -220,7 +220,7 @@ impl ScryfallProvider {
             Ok(result)
         });
         
-        result.map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Sets to build error: {}", e)))
+        result.map_err(|e: Box<dyn std::error::Error>| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Sets to build error: {}", e)))
     }
 }
 

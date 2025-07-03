@@ -1400,28 +1400,38 @@ pub fn build_base_mtgjson_cards(
     // Download cards from Scryfall if no additional cards provided
     if additional_cards.is_none() {
         // Create a runtime for this synchronous context  
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        match rt.block_on(async {
-            let provider = ScryfallProvider::new().map_err(|e| format!("Provider creation error: {}", e))?;
-            Python::with_gil(|py| {
-                provider.download_cards(py, set_code)
-            }).map_err(|e| format!("Download cards error: {}", e))
-        }) {
-            Ok(scryfall_cards) => {
-                // Process each Scryfall card into MtgjsonCardObject
-                for card_py in scryfall_cards.iter() {
-                    // Convert Python object to JSON and then to Rust object
-                    // In a real implementation, this would be a full card parser
+        let card_count = Python::with_gil(|py| -> PyResult<usize> {
+            let provider = ScryfallProvider::new()?;
+            let scryfall_cards = provider.download_cards(py, set_code)?;
+            
+            // Process cards within the with_gil closure to avoid lifetime issues
+            let count = scryfall_cards.len();
+            for _card_py in scryfall_cards.iter() {
+                // Convert Python object to JSON and then to Rust object
+                // In a real implementation, this would be a full card parser
+                let mut card = MtgjsonCardObject::new(is_token);
+                card.set_code = set_code.to_string();
+                
+                // Basic fields that can be easily set
+                // In practice, this would be a comprehensive parser
+                // matching the Python build_mtgjson_card function
+                
+                // Note: We can't modify the cards vector here due to borrow checker
+                // This is a placeholder - in real implementation, we'd collect data
+                // and create cards outside the closure
+            }
+            Ok(count)
+        });
+        
+        match card_count {
+            Ok(count) => {
+                // Create placeholder cards for now
+                for _ in 0..count {
                     let mut card = MtgjsonCardObject::new(is_token);
                     card.set_code = set_code.to_string();
-                    
-                    // Basic fields that can be easily set
-                    // In practice, this would be a comprehensive parser
-                    // matching the Python build_mtgjson_card function
-                    
                     cards.push(card);
                 }
-                println!("Processed {} Scryfall cards", scryfall_cards.len());
+                println!("Processed {} Scryfall cards", count);
             }
             Err(e) => {
                 eprintln!("Failed to download cards for {}: {}", set_code, e);
