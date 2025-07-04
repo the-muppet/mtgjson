@@ -1,7 +1,9 @@
 // PyO3 wrapper functions for utility functions
 use pyo3::prelude::*;
-use crate::base;
-use crate::utils::MtgjsonUtils;
+use sha2::{Sha256, Digest};
+use std::fs::File;
+use std::io::{BufReader, Read};
+use std::path::Path;
 
 /// Convert string to camelCase (PyO3 wrapper)
 #[pyfunction]
@@ -84,4 +86,98 @@ pub fn clean_card_number(card_number: &str) -> PyResult<String> {
     cleaned = cleaned.replace("†", ""); // Remove dagger
     
     Ok(cleaned)
+}
+
+/// Calculate SHA256 hash of a file - equivalent to Python's get_file_hash
+pub fn get_file_hash(file_path: &Path) -> Option<String> {
+    let file = File::open(file_path).ok()?;
+    let mut reader = BufReader::new(file);
+    let mut hasher = Sha256::new();
+    let mut buffer = [0; 8192];
+
+    loop {
+        match reader.read(&mut buffer) {
+            Ok(0) => break, // EOF
+            Ok(n) => hasher.update(&buffer[..n]),
+            Err(_) => return None,
+        }
+    }
+
+    let result = hasher.finalize();
+    Some(hex::encode(result))
+}
+
+/// Initialize logger - equivalent to Python's init_logger
+#[pyfunction]
+pub fn init_logger() {
+    env_logger::init();
+}
+
+/// Send push notification - placeholder for now
+#[pyfunction]
+pub fn send_push_notification(message: String) -> PyResult<()> {
+    println!("Push notification: {}", message);
+    Ok(())
+}
+
+/// Load local set data - placeholder implementation
+#[pyfunction]  
+pub fn load_local_set_data() -> PyResult<std::collections::HashMap<String, serde_json::Value>> {
+    // In real implementation, would load from resources/additional_sets.json
+    Ok(std::collections::HashMap::new())
+}
+
+/// URL keygen function - placeholder implementation
+#[pyfunction]
+pub fn url_keygen(url: String) -> PyResult<String> {
+    // Simple URL key generation - in real implementation would be more sophisticated
+    Ok(url.replace("https://", "").replace("http://", "").replace("/", "_"))
+}
+
+/// Get string or None helper
+pub fn get_str_or_none(value: Option<&str>) -> Option<String> {
+    value.map(|s| s.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_get_file_hash() {
+        let temp_dir = tempdir().unwrap();
+        let file_path = temp_dir.path().join("test.txt");
+        
+        // Create a test file
+        fs::write(&file_path, "Hello, world!").unwrap();
+        
+        // Calculate hash
+        let hash = get_file_hash(&file_path);
+        assert!(hash.is_some());
+        
+        // Verify it's a valid SHA256 hash (64 hex characters)
+        let hash_str = hash.unwrap();
+        assert_eq!(hash_str.len(), 64);
+        assert!(hash_str.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn test_get_file_hash_nonexistent() {
+        let hash = get_file_hash(Path::new("nonexistent_file.txt"));
+        assert!(hash.is_none());
+    }
+
+    #[test]
+    fn test_url_keygen() {
+        let result = url_keygen("https://api.scryfall.com/cards".to_string()).unwrap();
+        assert_eq!(result, "api.scryfall.com_cards");
+    }
+
+    #[test]
+    fn test_get_str_or_none() {
+        assert_eq!(get_str_or_none(Some("test")), Some("test".to_string()));
+        assert_eq!(get_str_or_none(None), None);
+    }
 }

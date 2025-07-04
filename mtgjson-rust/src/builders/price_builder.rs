@@ -5,9 +5,12 @@ use pyo3::types::{PyDict, PyTuple};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
-use std::io::Write;
+use std::io::{Write, Read, BufReader, BufRead};
 use std::path::PathBuf;
 use std::process::Command;
+use reqwest;
+use tokio;
+use futures::StreamExt;
 
 use crate::config::get_config;
 use crate::providers::{
@@ -49,82 +52,30 @@ impl PriceBuilder {
     /// Build today's prices from upstream sources and combine them together
     /// Returns: Dict[str, Any] - Today's prices to be merged into archive
     pub fn build_today_prices(&self) -> PyResult<HashMap<String, Value>> {
+        if !self.all_printings_path.is_file() {
+            eprintln!(
+                "Unable to build prices. AllPrintings not found in {}",
+                get_config().get_output_path().display()
+            );
+            return Ok(HashMap::new());
+        }
+
         let mut final_results = HashMap::new();
+        let mut provider_results = Vec::new();
 
-        // Check if AllPrintings exists
-        if let Some(ref path) = self.all_printings_path {
-            if !path.exists() {
-                return Err(PyErr::new::<pyo3::exceptions::PyFileNotFoundError, _>(
-                    format!(
-                        "Unable to build prices. AllPrintings not found in {:?}",
-                        path
-                    ),
-                ));
-            }
-        } else {
-            let config = get_config();
-            let default_path = config.get_output_path().join("AllPrintings.json");
-            if !default_path.exists() {
-                return Err(PyErr::new::<pyo3::exceptions::PyFileNotFoundError, _>(
-                    format!(
-                        "Unable to build prices. AllPrintings not found in {}",
-                        default_path.display()
-                    ),
-                ));
+        // Process each provider
+        for provider in &self.providers {
+            match self.generate_prices(provider) {
+                Ok(prices) => provider_results.push(prices),
+                Err(e) => {
+                    eprintln!("Failed to generate prices: {}", e);
+                }
             }
         }
 
-        // Generate prices from each provider
-        if self.providers.is_empty() {
-            // Use default providers if none specified
-            let default_providers = vec![
-                "CardHoarder",
-                "TCGPlayer", 
-                "CardMarket",
-                "CardKingdom",
-                "MultiverseBridge"
-            ];
-
-            for provider_name in default_providers {
-                match self.generate_prices_for_provider(provider_name) {
-                    Ok(provider_prices) => {
-                        self.merge_price_data(&mut final_results, provider_prices);
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to compile for {} with error: {}", provider_name, e);
-                    }
-                }
-            }
-        } else {
-            // Use provided providers
-            Python::with_gil(|py| {
-                for provider in &self.providers {
-                    match provider.call_method1(
-                        py,
-                        "generate_today_price_dict",
-                        (self.all_printings_path.as_ref(),),
-                    ) {
-                        Ok(provider_result) => {
-                            if let Ok(json_str) = provider_result.extract::<String>(py) {
-                                if let Ok(provider_data) = serde_json::from_str::<Value>(&json_str) {
-                                    if let Some(provider_map) = provider_data.as_object() {
-                                        for (key, value) in provider_map {
-                                            final_results.insert(key.clone(), value.clone());
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("Warning: Provider failed to generate prices: {}", e);
-                        }
-                    }
-                }
-            });
-        }
-
-        if final_results.is_empty() {
-            eprintln!("Warning: No price data generated from any provider");
+        // Merge all provider results using mergedeep-like functionality
+        for prices in provider_results {
+            self.merge_deep(&mut final_results, prices);
         }
 
         Ok(final_results)
@@ -186,10 +137,15 @@ impl PriceBuilder {
         let local_zip_file = cache_path.join(&bucket_object_path);
         Self::write_price_archive_data_static(local_zip_file.clone(), &archive_prices)?;
 
-        // Upload to S3 (placeholder - would need AWS SDK)
-        println!("Uploading price data to S3");
-        // TODO: Implement actual S3 upload using AWS SDK
-
+        // Push changes to remote database
+        println!("Uploading price data");
+        let s3_handler = crate::s3_handler::MtgjsonS3Handler::new();
+        s3_handler.upload_file(
+            local_zip_file.to_string_lossy().to_string(),
+            bucket_name,
+            bucket_object_path,
+        )?;
+        
         // Clean up local file
         if local_zip_file.exists() {
             fs::remove_file(&local_zip_file)
@@ -237,7 +193,7 @@ impl PriceBuilder {
         bucket_name: String,
         bucket_object_path: String,
     ) -> PyResult<HashMap<String, Value>> {
-        println!("Downloading Current Price Data File from S3");
+        println!("Downloading Current Price Data File");
         
         let config = get_config();
         let cache_path = config.get_cache_path();
@@ -246,30 +202,25 @@ impl PriceBuilder {
         
         let temp_zip_file = cache_path.join("temp.tar.xz");
         
-        // TODO: Implement actual S3 download using AWS SDK
-        // For now, create an empty file or return empty data
-        if !temp_zip_file.exists() {
-            eprintln!("Warning: Download of current price data failed - no S3 implementation yet");
+        // Download file using S3 handler
+        let s3_handler = crate::s3_handler::MtgjsonS3Handler::new();
+        let downloaded_successfully = s3_handler.download_file(
+            bucket_name,
+            bucket_object_path,
+            temp_zip_file.to_string_lossy().to_string(),
+        )?;
+        
+        if !downloaded_successfully {
+            eprintln!("Warning: Download of current price data failed");
             return Ok(HashMap::new());
         }
         
-        // Decompress and read the file
-        let output = Command::new("xz")
-            .arg("-d")
-            .arg("-c")
-            .arg(&temp_zip_file)
-            .output()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                format!("Failed to decompress file: {}", e)
-            ))?;
+        // Decompress and read the file using xz2 crate
+        let file = fs::File::open(&temp_zip_file)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
         
-        if !output.status.success() {
-            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                format!("Decompression failed: {}", String::from_utf8_lossy(&output.stderr))
-            ));
-        }
-        
-        let content: HashMap<String, Value> = serde_json::from_slice(&output.stdout)
+        let decoder = xz2::read::XzDecoder::new(file);
+        let content: HashMap<String, Value> = serde_json::from_reader(decoder)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
         
         // Clean up temp file
@@ -302,129 +253,106 @@ impl PriceBuilder {
 
     /// Download the hosted version of AllPrintings from MTGJSON for future consumption
     pub fn download_old_all_printings(&self) -> PyResult<()> {
-        println!("Downloading AllPrintings.json from MTGJSON");
-        
-        // Use reqwest or similar HTTP client (placeholder for now)
-        // This would implement:
-        // 1. HTTP download from https://mtgjson.com/api/v5/AllPrintings.json.xz
-        // 2. XZ decompression using Command::new("xz") or lzma crate
-        // 3. Writing to self.all_printings_path
-        
+        let rt = tokio::runtime::Runtime::new()
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+
+        rt.block_on(async {
+            self.download_old_all_printings_async().await
+        })
+    }
+
+    async fn download_old_all_printings_async(&self) -> PyResult<()> {
+        let mut file_bytes = Vec::new();
         let url = "https://mtgjson.com/api/v5/AllPrintings.json.xz";
-        let output_path = self.all_printings_path.as_ref()
-            .unwrap_or(&get_config().get_output_path().join("AllPrintings.json"));
         
+        let client = reqwest::Client::new();
+        let mut response = client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyConnectionError, _>(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(PyErr::new::<pyo3::exceptions::PyConnectionError, _>(
+                format!("HTTP error: {}", response.status())
+            ));
+        }
+
+        while let Some(chunk) = response.chunk().await
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyConnectionError, _>(e.to_string()))? {
+            file_bytes.extend_from_slice(&chunk);
+        }
+
         // Create output directory
-        if let Some(parent) = output_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
-        }
-        
-        // Download using curl (placeholder - would use proper HTTP client in production)
-        let temp_file = output_path.with_extension("json.xz");
-        
-        let download_result = Command::new("curl")
-            .arg("-L")
-            .arg("-o")
-            .arg(&temp_file)
-            .arg(url)
-            .output();
-        
-        match download_result {
-            Ok(output) if output.status.success() => {
-                // Decompress the file
-                let decompress_result = Command::new("xz")
-                    .arg("-d")
-                    .arg("-c")
-                    .arg(&temp_file)
-                    .output()
-                    .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                        format!("Failed to decompress: {}", e)
-                    ))?;
-                
-                if decompress_result.status.success() {
-                    fs::write(output_path, &decompress_result.stdout)
-                        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
-                    
-                    // Clean up compressed file
-                    if temp_file.exists() {
-                        fs::remove_file(&temp_file)
-                            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
-                    }
-                    
-                    println!("Successfully downloaded and decompressed AllPrintings.json");
-                } else {
-                    return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                        format!("Decompression failed: {}", String::from_utf8_lossy(&decompress_result.stderr))
-                    ));
-                }
-            }
-            Ok(output) => {
-                return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                    format!("Download failed: {}", String::from_utf8_lossy(&output.stderr))
-                ));
-            }
-            Err(e) => {
-                return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                    format!("Failed to execute curl: {}", e)
-                ));
-            }
-        }
-        
+        let output_path = get_config().get_output_path();
+        fs::create_dir_all(&output_path)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
+
+        // Decompress using xz2 crate
+        let decompressed = xz2::read::XzDecoder::new(&file_bytes[..]);
+        let mut reader = BufReader::new(decompressed);
+        let mut content = String::new();
+        reader.read_to_string(&mut content)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
+
+        // Write to file
+        fs::write(&self.all_printings_path, content)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
+
         Ok(())
     }
 }
 
 impl PriceBuilder {
-    /// Helper method to generate prices from a provider by name
-    fn generate_prices_for_provider(&self, provider_name: &str) -> PyResult<HashMap<String, Value>> {
-        println!("Generating prices from provider: {}", provider_name);
-        
-        // Placeholder implementation - would integrate with actual provider APIs
-        let mut prices = HashMap::new();
-        
-        // In real implementation, would:
-        // 1. Create provider instance
-        // 2. Call generate_today_price_dict method
-        // 3. Return parsed JSON data
-        
-        match provider_name {
-            "CardHoarder" => {
-                // Placeholder - would call CardHoarderProvider
-                prices.insert("cardhoarder".to_string(), json!({}));
+    /// Generate the prices for a source and prepare them for merging with other entities
+    /// Equivalent to Python's _generate_prices method
+    fn generate_prices(&self, provider: &PyObject) -> PyResult<HashMap<String, Value>> {
+        Python::with_gil(|py| {
+            match provider.call_method1(py, "generate_today_price_dict", (&self.all_printings_path,)) {
+                Ok(preprocess_prices) => {
+                    // Convert to JSON and back to ensure serialization like Python's json.loads(json.dumps(...))
+                    let json_str = preprocess_prices.call_method0(py, "to_json")
+                        .unwrap_or_else(|_| preprocess_prices.str(py).unwrap())
+                        .extract::<String>(py)?;
+                    
+                    let final_prices: HashMap<String, Value> = serde_json::from_str(&json_str)
+                        .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
+                    
+                    Ok(final_prices)
+                }
+                Err(exception) => {
+                    let provider_name = provider.getattr(py, "__class__")
+                        .and_then(|cls| cls.getattr(py, "__name__"))
+                        .and_then(|name| name.extract::<String>(py))
+                        .unwrap_or_else(|_| "Unknown".to_string());
+                    
+                    eprintln!("Failed to compile for {} with error: {}", provider_name, exception);
+                    Ok(HashMap::new())
+                }
             }
-            "TCGPlayer" => {
-                // Placeholder - would call TCGPlayerProvider
-                prices.insert("tcgplayer".to_string(), json!({}));
-            }
-            "CardMarket" => {
-                // Placeholder - would call CardMarketProvider
-                prices.insert("cardmarket".to_string(), json!({}));
-            }
-            "CardKingdom" => {
-                // Placeholder - would call CardKingdomProvider
-                prices.insert("cardkingdom".to_string(), json!({}));
-            }
-            "MultiverseBridge" => {
-                // Placeholder - would call MultiverseBridgeProvider
-                prices.insert("multiverse_bridge".to_string(), json!({}));
-            }
-            _ => {
-                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                    format!("Unknown provider: {}", provider_name)
-                ));
-            }
-        }
-        
-        Ok(prices)
+        })
     }
 
-    /// Helper method to merge price data from multiple providers
-    fn merge_price_data(&self, target: &mut HashMap<String, Value>, source: HashMap<String, Value>) {
+    /// Deep merge functionality equivalent to Python's mergedeep.merge
+    fn merge_deep(&self, target: &mut HashMap<String, Value>, source: HashMap<String, Value>) {
         for (key, value) in source {
-            // Deep merge logic - for now, simple overwrite
-            // In real implementation, would do deep merge of nested objects
-            target.insert(key, value);
+            match target.get_mut(&key) {
+                Some(existing_value) => {
+                    // If both are objects, merge recursively
+                    if let (Some(existing_obj), Some(source_obj)) = (existing_value.as_object_mut(), value.as_object()) {
+                        for (inner_key, inner_value) in source_obj {
+                            existing_obj.insert(inner_key.clone(), inner_value.clone());
+                        }
+                    } else {
+                        // Otherwise, overwrite
+                        *existing_value = value;
+                    }
+                }
+                None => {
+                    // Key doesn't exist, insert new value
+                    target.insert(key, value);
+                }
+            }
         }
     }
 
@@ -504,7 +432,7 @@ impl PriceBuilder {
         let json_data = serde_json::to_string(price_data)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
         
-        fs::write(&tmp_save_path, json_data)
+        fs::write(&tmp_save_path, &json_data)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
         
         let file_size = tmp_save_path.metadata()
@@ -513,21 +441,25 @@ impl PriceBuilder {
         
         println!("Finished writing to {:?} (Size = {} bytes)", tmp_save_path, file_size);
 
-        // Compress the file using xz
+        // Compress the file using xz2 crate
         println!("Compressing {:?} for upload", tmp_save_path);
         
-        let compress_result = Command::new("xz")
-            .arg(tmp_save_path.to_str().unwrap())
-            .output()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                format!("Failed to execute xz: {}", e)
-            ))?;
+        let input_file = fs::File::open(&tmp_save_path)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
+        
+        let output_file = fs::File::create(&local_save_path)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
+        
+        let mut encoder = xz2::write::XzEncoder::new(output_file, 6);
+        std::io::copy(&mut std::io::BufReader::new(input_file), &mut encoder)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
+        
+        encoder.finish()
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
 
-        if !compress_result.status.success() {
-            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                format!("Compression failed: {}", String::from_utf8_lossy(&compress_result.stderr))
-            ));
-        }
+        // Remove temporary uncompressed file
+        fs::remove_file(&tmp_save_path)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
 
         let compressed_size = local_save_path.metadata()
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?

@@ -36,6 +36,8 @@ mod config;
 mod constants;
 // Utilities module
 mod utils_functions;
+// S3 handler module
+mod s3_handler;
 
 // Import all classes
 use classes::{
@@ -122,6 +124,9 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Add configuration class
     m.add_class::<config::MtgjsonConfig>()?;
 
+    // Add S3 handler class
+    m.add_class::<s3_handler::MtgjsonS3Handler>()?;
+
     // Add set_builder module functions - use the correct wrapper functions
     m.add_function(wrap_pyfunction!(
         builders::set_builder_functions::parse_card_types_wrapper,
@@ -174,6 +179,12 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Add all provider classes for 100% Python API coverage
     providers::add_provider_classes_to_module(m)?;
+
+    // Add utility functions
+    m.add_function(wrap_pyfunction!(utils_functions::init_logger, m)?)?;
+    m.add_function(wrap_pyfunction!(utils_functions::send_push_notification, m)?)?;
+    m.add_function(wrap_pyfunction!(utils_functions::load_local_set_data, m)?)?;
+    m.add_function(wrap_pyfunction!(utils_functions::url_keygen, m)?)?;
 
     Ok(())
 }
