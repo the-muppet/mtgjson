@@ -30,6 +30,12 @@ mod providers;
 mod compiled_classes;
 // Performance modules
 mod builders;
+// Configuration module
+mod config;
+// Constants module
+mod constants;
+// Utilities module
+mod utils_functions;
 
 // Import all classes
 use classes::{
@@ -112,6 +118,9 @@ fn mtgjson_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PriceBuilder>()?;
     m.add_class::<ParallelProcessor>()?;
     m.add_class::<ParallelIterator>()?;
+
+    // Add configuration class
+    m.add_class::<config::MtgjsonConfig>()?;
 
     // Add set_builder module functions - use the correct wrapper functions
     m.add_function(wrap_pyfunction!(
